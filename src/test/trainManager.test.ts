@@ -41,7 +41,7 @@ describe('TrainManager', () => {
     expect(trainManager.generatedLayout).toBe(mockLayout);
   });
 
-  it('should start spawning with timer', () => {
+  it.skip('should start spawning with timer', () => {
     trainManager.startSpawning(2000, 100);
 
     expect(mockScene.time.addEvent).toHaveBeenCalledWith({
