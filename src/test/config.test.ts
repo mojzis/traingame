@@ -79,4 +79,61 @@ describe('Layout Generator', () => {
     expect(Object.keys(layout.switches).length).toBeGreaterThan(0);
     expect(layout.connections.length).toBeGreaterThan(0);
   });
+
+  it('should prevent switch overlaps and maintain minimum spacing', () => {
+    const layout = generateBalancedLayout();
+    const minSpacing = GAME_CONFIG.graphics.switchSize * 2;
+    const connections = layout.connections;
+
+    // Check no switches are too close to each other
+    for (let i = 0; i < connections.length; i++) {
+      for (let j = i + 1; j < connections.length; j++) {
+        const switch1 = connections[i];
+        const switch2 = connections[j];
+        const distance = Math.abs(switch1.x - switch2.x);
+
+        // If switches are close in x position, they should have sufficient spacing
+        if (distance < minSpacing) {
+          // They should be on different tracks or have more spacing
+          expect(switch1.source !== switch2.source).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('should not create bidirectional switches at same position', () => {
+    const layout = generateBalancedLayout();
+    const connections = layout.connections;
+
+    // Group connections by x position (allowing small variations)
+    const positionGroups: { [key: number]: typeof connections } = {};
+    const tolerance = 25; // Allow 25px tolerance for position grouping
+
+    connections.forEach((conn) => {
+      const roundedX = Math.round(conn.x / tolerance) * tolerance;
+      if (!positionGroups[roundedX]) {
+        positionGroups[roundedX] = [];
+      }
+      positionGroups[roundedX].push(conn);
+    });
+
+    // Check each position group for bidirectional conflicts
+    Object.values(positionGroups).forEach((group) => {
+      if (group.length > 1) {
+        // Check if we have conflicting bidirectional switches
+        for (let i = 0; i < group.length; i++) {
+          for (let j = i + 1; j < group.length; j++) {
+            const sw1 = group[i];
+            const sw2 = group[j];
+
+            // Should not have switches where track A->B and track B->A at same position
+            const isBidirectional =
+              sw1.source === sw2.target && sw1.target === sw2.source;
+
+            expect(isBidirectional).toBe(false);
+          }
+        }
+      }
+    });
+  });
 });

@@ -62,10 +62,12 @@ export function generateBalancedLayout() {
   const tracks = GAME_CONFIG.physics.tracks;
   const trackNames = Object.keys(tracks) as (keyof typeof tracks)[];
   const gameWidth = GAME_CONFIG.width;
+  const switchSize = GAME_CONFIG.graphics.switchSize;
+  const minSwitchSpacing = switchSize * 2; // Minimum spacing between switches
 
   // Generate evenly distributed switch positions
   const switchPositions = [];
-  const numSwitchColumns = 6; // Number of vertical "columns" for switches
+  const numSwitchColumns = 8; // More columns for better distribution
 
   for (let col = 0; col < numSwitchColumns; col++) {
     const x = (gameWidth / (numSwitchColumns + 1)) * (col + 1);
@@ -82,6 +84,42 @@ export function generateBalancedLayout() {
   }> = [];
   let switchId = 1;
 
+  // Track occupied positions to prevent overlaps
+  const occupiedPositions: Array<{ x: number; track: string }> = [];
+
+  // Helper function to check if a position is available
+  function isPositionAvailable(x: number, track: string): boolean {
+    return !occupiedPositions.some(
+      (pos) =>
+        Math.abs(pos.x - x) < minSwitchSpacing ||
+        (pos.track === track && Math.abs(pos.x - x) < minSwitchSpacing * 1.5),
+    );
+  }
+
+  // Helper function to find available position
+  function findAvailablePosition(
+    track: string,
+    preferredPositions: number[],
+  ): number | null {
+    // Shuffle positions for randomness
+    const shuffled = [...preferredPositions].sort(() => Math.random() - 0.5);
+
+    for (const x of shuffled) {
+      if (isPositionAvailable(x, track)) {
+        return x;
+      }
+    }
+
+    // If no preferred position works, try to find any available position
+    for (let x = 150; x < gameWidth - 150; x += 50) {
+      if (isPositionAvailable(x, track)) {
+        return x;
+      }
+    }
+
+    return null;
+  }
+
   // Forward switches (track N -> track N+1)
   for (let i = 0; i < trackNames.length - 1; i++) {
     const sourceTrack = trackNames[i];
@@ -90,16 +128,18 @@ export function generateBalancedLayout() {
     // Add 1-2 switches for this track pair
     const numSwitches = Math.random() < 0.7 ? 1 : 2;
     for (let j = 0; j < numSwitches; j++) {
-      const x =
-        switchPositions[Math.floor(Math.random() * switchPositions.length)];
-      const id = `switch${switchId++}`;
-      switches[id] = x;
-      switchConnections.push({
-        id,
-        source: sourceTrack,
-        target: targetTrack,
-        x,
-      });
+      const x = findAvailablePosition(sourceTrack, switchPositions);
+      if (x !== null) {
+        const id = `switch${switchId++}`;
+        switches[id] = x;
+        switchConnections.push({
+          id,
+          source: sourceTrack,
+          target: targetTrack,
+          x,
+        });
+        occupiedPositions.push({ x, track: sourceTrack });
+      }
     }
   }
 
@@ -108,18 +148,20 @@ export function generateBalancedLayout() {
     const sourceTrack = trackNames[i];
     const targetTrack = trackNames[i - 1];
 
-    // Add 1 backward switch per track pair (50% chance)
-    if (Math.random() < 0.6) {
-      const x =
-        switchPositions[Math.floor(Math.random() * switchPositions.length)];
-      const id = `switch${switchId++}`;
-      switches[id] = x;
-      switchConnections.push({
-        id,
-        source: sourceTrack,
-        target: targetTrack,
-        x,
-      });
+    // Add 1 backward switch per track pair (40% chance, reduced to prevent conflicts)
+    if (Math.random() < 0.4) {
+      const x = findAvailablePosition(sourceTrack, switchPositions);
+      if (x !== null) {
+        const id = `switch${switchId++}`;
+        switches[id] = x;
+        switchConnections.push({
+          id,
+          source: sourceTrack,
+          target: targetTrack,
+          x,
+        });
+        occupiedPositions.push({ x, track: sourceTrack });
+      }
     }
   }
 
@@ -128,18 +170,20 @@ export function generateBalancedLayout() {
     const sourceTrack = trackNames[i];
     const targetTrack = trackNames[i + 2];
 
-    // Add skip switches (30% chance)
-    if (Math.random() < 0.3) {
-      const x =
-        switchPositions[Math.floor(Math.random() * switchPositions.length)];
-      const id = `switch${switchId++}`;
-      switches[id] = x;
-      switchConnections.push({
-        id,
-        source: sourceTrack,
-        target: targetTrack,
-        x,
-      });
+    // Add skip switches (20% chance, reduced to prevent overcrowding)
+    if (Math.random() < 0.2) {
+      const x = findAvailablePosition(sourceTrack, switchPositions);
+      if (x !== null) {
+        const id = `switch${switchId++}`;
+        switches[id] = x;
+        switchConnections.push({
+          id,
+          source: sourceTrack,
+          target: targetTrack,
+          x,
+        });
+        occupiedPositions.push({ x, track: sourceTrack });
+      }
     }
   }
 
@@ -162,11 +206,11 @@ export function generateBalancedLayout() {
     );
 
     if (switchesBeforeStop.length === 0) {
-      // Add a switch before this stop
+      // Add a switch before this stop, respecting spacing
       const earlierX = stopX - 150 - Math.random() * 100;
       const targetTrack =
         trackNames[Math.floor(Math.random() * trackNames.length)];
-      if (targetTrack !== track) {
+      if (targetTrack !== track && isPositionAvailable(earlierX, track)) {
         const id = `switch${switchId++}`;
         switches[id] = Math.round(earlierX);
         switchConnections.push({
@@ -175,6 +219,7 @@ export function generateBalancedLayout() {
           target: targetTrack,
           x: earlierX,
         });
+        occupiedPositions.push({ x: earlierX, track });
       }
     }
 
