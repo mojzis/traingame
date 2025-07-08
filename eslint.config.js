@@ -19,6 +19,8 @@ export default [
         document: 'readonly',
         localStorage: 'readonly',
         performance: 'readonly',
+        Phaser: 'readonly',
+        vi: 'readonly',
       },
     },
     plugins: {

@@ -1,4 +1,9 @@
-export type TrackPosition = 'track1' | 'track2' | 'track3' | 'track4' | 'track5';
+export type TrackPosition =
+  | 'track1'
+  | 'track2'
+  | 'track3'
+  | 'track4'
+  | 'track5';
 
 export interface Position {
   x: number;

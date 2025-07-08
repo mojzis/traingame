@@ -21,22 +21,25 @@ describe('Game Logic', () => {
 
   describe('Safe Distance Calculation', () => {
     it('should calculate safe spawning distance', () => {
-      const calculateSafeDistance = (trainSpeed: number, reactionTime: number = 3000): number => {
+      const calculateSafeDistance = (
+        trainSpeed: number,
+        reactionTime: number = 3000,
+      ): number => {
         const baseSafeDistance = 200;
         const pixelsPerMs = trainSpeed / 1000;
-        return baseSafeDistance + (reactionTime * pixelsPerMs);
+        return baseSafeDistance + reactionTime * pixelsPerMs;
       };
 
       expect(calculateSafeDistance(100)).toBe(500); // 200 + (3000 * 0.1)
       expect(calculateSafeDistance(140)).toBe(620); // 200 + (3000 * 0.14)
-      expect(calculateSafeDistance(80)).toBe(440);  // 200 + (3000 * 0.08)
+      expect(calculateSafeDistance(80)).toBe(440); // 200 + (3000 * 0.08)
     });
   });
 
   describe('Track Position Validation', () => {
     it('should validate track positions', () => {
       const validTracks = ['track1', 'track2', 'track3', 'track4', 'track5'];
-      
+
       const isValidTrack = (track: string): boolean => {
         return validTracks.includes(track);
       };
@@ -56,7 +59,10 @@ describe('Game Logic', () => {
         state: 'straight' | 'connected';
       }
 
-      const getTargetTrack = (switchConfig: SwitchConfig, incomingTrack: string): string => {
+      const getTargetTrack = (
+        switchConfig: SwitchConfig,
+        incomingTrack: string,
+      ): string => {
         // Only trains on source track are affected
         if (incomingTrack !== switchConfig.source) {
           return incomingTrack;
@@ -70,8 +76,16 @@ describe('Game Logic', () => {
         }
       };
 
-      const switch1: SwitchConfig = { source: 'track1', target: 'track2', state: 'straight' };
-      const switch2: SwitchConfig = { source: 'track1', target: 'track2', state: 'connected' };
+      const switch1: SwitchConfig = {
+        source: 'track1',
+        target: 'track2',
+        state: 'straight',
+      };
+      const switch2: SwitchConfig = {
+        source: 'track1',
+        target: 'track2',
+        state: 'connected',
+      };
 
       // Straight switch - no diversion
       expect(getTargetTrack(switch1, 'track1')).toBe('track1');
@@ -100,8 +114,11 @@ describe('Game Logic', () => {
   describe('Game State Validation', () => {
     it('should validate train positions for off-screen detection', () => {
       const gameWidth = 1200;
-      
-      const isOffScreen = (trainX: number, trainWidth: number = 60): boolean => {
+
+      const isOffScreen = (
+        trainX: number,
+        trainWidth: number = 60,
+      ): boolean => {
         return trainX > gameWidth + trainWidth;
       };
 
@@ -112,7 +129,7 @@ describe('Game Logic', () => {
 
     it('should detect train scoring position', () => {
       const gameWidth = 1200;
-      
+
       const isInScoringZone = (trainX: number): boolean => {
         return trainX > gameWidth * 0.9; // 90% across screen
       };

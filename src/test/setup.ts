@@ -6,7 +6,14 @@ vi.mock('phaser', () => ({
     Scene: class MockScene {},
     GameObjects: {
       Rectangle: class MockRectangle {
-        constructor(scene: any, x: number, y: number, width: number, height: number, color: number) {
+        constructor(
+          scene: any,
+          x: number,
+          y: number,
+          width: number,
+          height: number,
+          color: number,
+        ) {
           this.scene = scene;
           this.x = x;
           this.y = y;
@@ -52,7 +59,8 @@ vi.mock('phaser', () => ({
       },
     },
     Math: {
-      Between: (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min,
+      Between: (min: number, max: number) =>
+        Math.floor(Math.random() * (max - min + 1)) + min,
     },
   },
 }));

@@ -12,16 +12,22 @@ export class Switch extends Phaser.GameObjects.Container {
   private sourceTrack: TrackPosition;
   private destinationTrack: TrackPosition;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, sourceTrack: TrackPosition, destinationTrack: TrackPosition) {
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    sourceTrack: TrackPosition,
+    destinationTrack: TrackPosition,
+  ) {
     super(scene, x, y);
-    
+
     this.sourceTrack = sourceTrack;
     this.destinationTrack = destinationTrack;
-    
+
     // Create graphics for visual representation
     this.graphics = scene.add.graphics();
     this.add(this.graphics);
-    
+
     // Create invisible hit area for click detection
     this.hitArea = scene.add.rectangle(
       0,
@@ -31,13 +37,13 @@ export class Switch extends Phaser.GameObjects.Container {
     );
     this.hitArea.setInteractive({ cursor: 'pointer' });
     this.add(this.hitArea);
-    
+
     // Setup interaction events
     this.setupInteraction();
-    
+
     // Draw initial state
     this.draw();
-    
+
     scene.add.existing(this);
   }
 
@@ -45,12 +51,12 @@ export class Switch extends Phaser.GameObjects.Container {
     this.hitArea.on('pointerdown', () => {
       this.toggle();
     });
-    
+
     this.hitArea.on('pointerover', () => {
       this.isHovered = true;
       this.draw();
     });
-    
+
     this.hitArea.on('pointerout', () => {
       this.isHovered = false;
       this.draw();
@@ -58,9 +64,10 @@ export class Switch extends Phaser.GameObjects.Container {
   }
 
   toggle(): void {
-    this.switchState = this.switchState === 'straight' ? 'connected' : 'straight';
+    this.switchState =
+      this.switchState === 'straight' ? 'connected' : 'straight';
     this.draw();
-    
+
     // Add toggle animation
     this.scene.tweens.add({
       targets: this,
@@ -77,17 +84,18 @@ export class Switch extends Phaser.GameObjects.Container {
 
   private draw(): void {
     this.graphics.clear();
-    
-    const color = this.switchState === 'straight' 
-      ? GAME_CONFIG.colors.switch 
-      : GAME_CONFIG.colors.switchActive;
-    
+
+    const color =
+      this.switchState === 'straight'
+        ? GAME_CONFIG.colors.switch
+        : GAME_CONFIG.colors.switchActive;
+
     const size = GAME_CONFIG.graphics.switchSize;
-    
+
     // Draw switch body (diamond shape for hand-drawn look)
     this.graphics.lineStyle(3, 0x000000);
     this.graphics.fillStyle(color, this.isHovered ? 0.8 : 1);
-    
+
     this.graphics.beginPath();
     this.graphics.moveTo(0, -size);
     this.graphics.lineTo(size, 0);
@@ -96,11 +104,11 @@ export class Switch extends Phaser.GameObjects.Container {
     this.graphics.closePath();
     this.graphics.fillPath();
     this.graphics.strokePath();
-    
+
     // Draw switch direction indicator
     this.graphics.lineStyle(4, 0x333333);
     this.graphics.beginPath();
-    
+
     if (this.switchState === 'straight') {
       // Parallel lines indicating trains continue straight
       this.graphics.moveTo(-size * 0.6, -size * 0.3);
@@ -114,7 +122,7 @@ export class Switch extends Phaser.GameObjects.Container {
       this.graphics.moveTo(-size * 0.6, size * 0.3);
       this.graphics.lineTo(size * 0.6, -size * 0.3);
     }
-    
+
     this.graphics.strokePath();
   }
 
@@ -132,7 +140,7 @@ export class Switch extends Phaser.GameObjects.Container {
     if (incomingTrack !== this.sourceTrack) {
       return incomingTrack; // Train continues on current track
     }
-    
+
     // Unidirectional switch logic: only trains from source track can be diverted
     if (this.switchState === 'straight') {
       return incomingTrack; // Continue on source track

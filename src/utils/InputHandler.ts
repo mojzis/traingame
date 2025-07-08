@@ -1,14 +1,16 @@
 export class InputHandler {
   static addHoverEffect(
-    gameObject: Phaser.GameObjects.GameObject & { setScale: (scale: number) => void },
+    gameObject: Phaser.GameObjects.GameObject & {
+      setScale: (scale: number) => void;
+    },
     scaleAmount: number = 1.1,
   ): void {
     gameObject.setInteractive();
-    
+
     gameObject.on('pointerover', () => {
       gameObject.setScale(scaleAmount);
     });
-    
+
     gameObject.on('pointerout', () => {
       gameObject.setScale(1);
     });

@@ -31,11 +31,11 @@ describe('Game Configuration', () => {
 describe('Layout Generator', () => {
   it('should generate valid layout structure', () => {
     const layout = generateBalancedLayout();
-    
+
     expect(layout).toHaveProperty('switches');
     expect(layout).toHaveProperty('stops');
     expect(layout).toHaveProperty('connections');
-    
+
     expect(typeof layout.switches).toBe('object');
     expect(typeof layout.stops).toBe('object');
     expect(Array.isArray(layout.connections)).toBe(true);
@@ -43,7 +43,7 @@ describe('Layout Generator', () => {
 
   it('should generate stops with required properties', () => {
     const layout = generateBalancedLayout();
-    
+
     Object.values(layout.stops).forEach((stop: any) => {
       expect(stop).toHaveProperty('x');
       expect(stop).toHaveProperty('track');
@@ -57,7 +57,7 @@ describe('Layout Generator', () => {
 
   it('should generate switch connections with valid properties', () => {
     const layout = generateBalancedLayout();
-    
+
     layout.connections.forEach((connection: any) => {
       expect(connection).toHaveProperty('id');
       expect(connection).toHaveProperty('source');
