@@ -12,6 +12,14 @@ A JavaScript browser-based train switching game where players prevent train coll
 - `npm run lint` - Run ESLint
 - `npm run format` - Format code with Prettier
 
+## ⚠️ IMPORTANT: Pre-Commit Workflow
+**ALWAYS run these commands before every commit to match GitHub Actions:**
+1. `npm run lint` - Must pass with no errors
+2. `npm run test:run` - All tests must pass
+3. `npm run build` - Build must succeed
+
+These are the exact steps that GitHub Actions runs, so running them locally prevents CI failures.
+
 ## Architecture
 - **Tech Stack**: TypeScript, Phaser 3, Vite, Vitest, ESLint, Prettier
 - **Game Size**: 1200x600 pixels
