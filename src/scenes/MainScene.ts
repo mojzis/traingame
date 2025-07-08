@@ -1,5 +1,10 @@
 import Phaser from 'phaser';
-import { GAME_CONFIG } from '../config/game.config';
+import {
+  GAME_CONFIG,
+  calculateSpeedMultiplier,
+  calculateSpawnInterval,
+  getSpeedLevel,
+} from '../config/game.config';
 import { TrainManager } from '../systems/TrainManager';
 import { CollisionManager } from '../systems/CollisionManager';
 import { TrackSystem } from '../systems/TrackSystem';
@@ -10,8 +15,11 @@ export class MainScene extends Phaser.Scene {
   private collisionManager!: CollisionManager;
   private trackSystem!: TrackSystem;
   private scoreText!: Phaser.GameObjects.Text;
+  private speedText!: Phaser.GameObjects.Text;
   private score: number = 0;
   private isGameOver: boolean = false;
+  private currentSpeedLevel: number = 0;
+  private baseSpawnInterval: number = 2000;
 
   constructor() {
     super({ key: 'MainScene' });
@@ -73,6 +81,13 @@ export class MainScene extends Phaser.Scene {
       fontFamily: 'Comic Sans MS, cursive',
     });
 
+    // Speed level indicator
+    this.speedText = this.add.text(GAME_CONFIG.width - 150, 50, 'Speed: 1.0x', {
+      fontSize: '18px',
+      color: '#666',
+      fontFamily: 'Comic Sans MS, cursive',
+    });
+
     // Instructions
     this.add.text(20, 20, 'Click switches to connect tracks!', {
       fontSize: '16px',
@@ -126,7 +141,8 @@ export class MainScene extends Phaser.Scene {
   private startGame(): void {
     this.isGameOver = false;
     this.score = 0;
-    this.trainManager.startSpawning(2000); // Faster spawning to compensate for safe spawn filtering
+    this.currentSpeedLevel = 0;
+    this.trainManager.startSpawning(this.baseSpawnInterval);
   }
 
   private updateScore(): void {
@@ -139,8 +155,34 @@ export class MainScene extends Phaser.Scene {
         this.score += 10;
 
         this.scoreText.setText(`Score: ${this.score}`);
+        this.updateGameSpeed();
       }
     });
+  }
+
+  private updateGameSpeed(): void {
+    const newSpeedLevel = getSpeedLevel(this.score);
+
+    if (newSpeedLevel > this.currentSpeedLevel) {
+      this.currentSpeedLevel = newSpeedLevel;
+      const speedMultiplier = calculateSpeedMultiplier(this.score);
+      const newSpawnInterval = calculateSpawnInterval(
+        this.score,
+        this.baseSpawnInterval,
+      );
+
+      // Update UI
+      this.speedText.setText(`Speed: ${speedMultiplier.toFixed(1)}x`);
+
+      // Update train manager with new spawn interval
+      this.trainManager.updateSpawnInterval(newSpawnInterval);
+
+      // Update all existing trains with new speed multiplier
+      this.trainManager.updateSpeedMultiplier(speedMultiplier);
+
+      // Show speed level up notification
+      this.showSpeedBonus(`SPEED UP! Level ${newSpeedLevel + 1}`);
+    }
   }
 
   private showBonus(text: string): void {
@@ -161,6 +203,29 @@ export class MainScene extends Phaser.Scene {
       y: bonus.y - 50,
       alpha: 0,
       duration: 1000,
+      ease: 'Power2',
+      onComplete: () => bonus.destroy(),
+    });
+  }
+
+  private showSpeedBonus(text: string): void {
+    const bonus = this.add.text(
+      GAME_CONFIG.width / 2,
+      GAME_CONFIG.height / 2 - 100,
+      text,
+      {
+        fontSize: '28px',
+        color: '#e67e22',
+        fontFamily: 'Comic Sans MS, cursive',
+      },
+    );
+    bonus.setOrigin(0.5);
+
+    this.tweens.add({
+      targets: bonus,
+      y: bonus.y - 40,
+      alpha: 0,
+      duration: 1500,
       ease: 'Power2',
       onComplete: () => bonus.destroy(),
     });

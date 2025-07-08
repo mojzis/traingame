@@ -13,6 +13,12 @@ export const GAME_CONFIG = {
     },
     trainSpeed: 100, // base pixels per second
     trainSpeedVariants: [80, 100, 120, 140], // Different speed options
+    speedProgression: {
+      pointsPerSpeedIncrease: 50, // Every 50 points, increase speed
+      maxSpeedMultiplier: 2.5, // Maximum 2.5x speed
+      spawnIntervalDecrease: 0.8, // Each level reduces spawn interval by 20%
+      minSpawnInterval: 800, // Minimum spawn interval (ms)
+    },
     switches: {
       switch1: 200, // ON Track1, diverts TO Track2
       switch2: 350, // ON Track1, diverts TO Track3
@@ -231,4 +237,33 @@ export function generateBalancedLayout() {
   });
 
   return { switches, stops, connections: switchConnections };
+}
+
+// Speed progression helper functions
+export function calculateSpeedMultiplier(score: number): number {
+  const config = GAME_CONFIG.physics.speedProgression;
+  const level = Math.floor(score / config.pointsPerSpeedIncrease);
+  const multiplier = 1 + level * 0.15; // Each level adds 15% speed
+  return Math.min(multiplier, config.maxSpeedMultiplier);
+}
+
+export function calculateSpawnInterval(
+  score: number,
+  baseInterval: number,
+): number {
+  const config = GAME_CONFIG.physics.speedProgression;
+  const level = Math.floor(score / config.pointsPerSpeedIncrease);
+  let interval = baseInterval;
+
+  for (let i = 0; i < level; i++) {
+    interval *= config.spawnIntervalDecrease;
+  }
+
+  return Math.max(interval, config.minSpawnInterval);
+}
+
+export function getSpeedLevel(score: number): number {
+  return Math.floor(
+    score / GAME_CONFIG.physics.speedProgression.pointsPerSpeedIncrease,
+  );
 }

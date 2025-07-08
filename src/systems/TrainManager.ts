@@ -9,6 +9,8 @@ export class TrainManager {
   private trainGroup: Phaser.Physics.Arcade.Group;
   private spawnTimer?: Phaser.Time.TimerEvent;
   private defaultSpeed: number = 100;
+  private speedMultiplier: number = 1.0;
+  private currentSpawnInterval: number = 2000;
   private generatedLayout: any = null;
 
   constructor(scene: Phaser.Scene) {
@@ -24,6 +26,7 @@ export class TrainManager {
 
   startSpawning(interval: number = 3000, speed: number = 100): void {
     this.defaultSpeed = speed;
+    this.currentSpawnInterval = interval;
     this.spawnTimer = this.scene.time.addEvent({
       delay: interval,
       callback: this.spawnTrain,
@@ -38,6 +41,32 @@ export class TrainManager {
   stopSpawning(): void {
     if (this.spawnTimer) {
       this.spawnTimer.destroy();
+    }
+  }
+
+  updateSpeedMultiplier(multiplier: number): void {
+    this.speedMultiplier = multiplier;
+
+    // Update all existing trains
+    this.trains.forEach((train) => {
+      train.updateSpeedMultiplier(multiplier);
+    });
+  }
+
+  updateSpawnInterval(interval: number): void {
+    if (this.currentSpawnInterval !== interval) {
+      this.currentSpawnInterval = interval;
+
+      // Restart the spawn timer with new interval
+      if (this.spawnTimer) {
+        this.spawnTimer.destroy();
+        this.spawnTimer = this.scene.time.addEvent({
+          delay: interval,
+          callback: this.spawnTrain,
+          callbackScope: this,
+          loop: true,
+        });
+      }
     }
   }
 
@@ -57,7 +86,8 @@ export class TrainManager {
     for (const track of shuffledTracks) {
       const safeSpawn = this.findSafeSpawnForTrack(track);
       if (safeSpawn) {
-        const train = new Train(this.scene, -100, track, safeSpawn.speed);
+        const finalSpeed = safeSpawn.speed * this.speedMultiplier;
+        const train = new Train(this.scene, -100, track, finalSpeed);
         this.trains.push(train);
         this.trainGroup.add(train);
         return;

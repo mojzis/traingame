@@ -168,4 +168,17 @@ export class Train extends Phaser.GameObjects.Rectangle {
   getSpeed(): number {
     return this.originalSpeed;
   }
+
+  updateSpeedMultiplier(multiplier: number): void {
+    // Update current speed based on original speed and multiplier
+    this.speed = this.originalSpeed * multiplier;
+
+    // Update physics velocity if train is not stopped and not switching
+    if (!this.isStopped && !this.isSwitching) {
+      const body = this.body as Phaser.Physics.Arcade.Body;
+      if (body) {
+        body.setVelocityX(this.speed);
+      }
+    }
+  }
 }
