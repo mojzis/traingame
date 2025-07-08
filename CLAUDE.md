@@ -50,6 +50,32 @@ These are the exact steps that GitHub Actions runs, so running them locally prev
 - Train management and safe spawning
 - Switch behavior and track interactions
 
+## ⚠️ IMPORTANT: Testing Strategy
+**ALWAYS update tests when changing or adding features:**
+
+### Testing Guidelines:
+1. **Feature Development** - When adding/changing features, update corresponding tests
+2. **Focus on Critical Parts** - Don't aim for 80% coverage, prioritize:
+   - Core game logic (scoring, collision detection, spawning)
+   - Layout generation algorithms
+   - Safe spawning and train management
+   - Switch behavior and track switching
+3. **Prefer Real Tests** - Minimize mocking, test actual behavior:
+   - Use real game configuration objects
+   - Test actual algorithms with real inputs/outputs
+   - Mock only external dependencies (Phaser scene objects)
+   - Avoid over-mocking internal game logic
+
+### Current Test Status:
+- ✅ **Passing**: Config, game logic, core TrainManager functionality
+- ⚠️ **Disabled**: Switch/Train entity tests (require better Phaser mocking)
+- 🎯 **Focus**: Keep existing tests working, add tests for new features
+
+### Test Maintenance:
+- Re-enable disabled tests when improving Phaser mocks
+- Add integration tests for complete game workflows
+- Test edge cases in spawning and collision scenarios
+
 ## Deployment
 - GitHub repository: `traingame`
 - Auto-deploys to GitHub Pages via Actions on main branch push
