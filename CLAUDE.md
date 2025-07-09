@@ -23,17 +23,22 @@ These are the exact steps that GitHub Actions runs, so running them locally prev
 ## Architecture
 - **Tech Stack**: TypeScript, Phaser 3, Vite, Vitest, ESLint, Prettier
 - **Game Size**: 1200x600 pixels
-- **Tracks**: 5 horizontal tracks (y: 100, 200, 300, 400, 500)
+- **Tracks**: Up to 6 horizontal tracks (y: 100, 200, 300, 400, 500, 580)
 - **Train Speeds**: 4 variants (80, 100, 120, 140) with color coding
 - **Switches**: Unidirectional, track-specific, diamond-shaped
 - **Stops**: Orange squares that temporarily pause trains
 
 ## Key Game Mechanics
-1. **Unidirectional Switches**: Only affect trains coming from source track
-2. **Safe Spawning**: Layout-aware algorithm prevents unavoidable crashes  
-3. **Curved Movement**: Trains follow quadratic curves when switching
-4. **Speed Variants**: Gray=slow, Blue=normal, Red=fast, Purple=very fast
-5. **Strategic Gameplay**: Every collision is preventable with proper switching
+1. **Level System**:
+   - Level 0 (Beginner): 3 tracks only (track2, track3, track4) - starts at 0 points
+   - Level 1 (Basic): 5 tracks (track1-5) - unlocks at 222 points
+   - Level 2 (Advanced): 6 tracks (all) - unlocks at 444 points
+2. **Unidirectional Switches**: Only affect trains coming from source track
+3. **Safe Spawning**: Layout-aware algorithm prevents unavoidable crashes  
+4. **Curved Movement**: Trains follow quadratic curves when switching
+5. **Speed Variants**: Gray=slow, Blue=normal, Red=fast, Purple=very fast
+6. **Strategic Gameplay**: Every collision is preventable with proper switching
+7. **Pause Feature**: Press SPACE to pause/unpause the game
 
 ## Important Files
 - `src/config/game.config.ts` - Central game configuration and layout generator
@@ -44,11 +49,13 @@ These are the exact steps that GitHub Actions runs, so running them locally prev
 - `.github/workflows/deploy.yml` - GitHub Pages deployment
 
 ## Testing
-34 tests covering:
+37 tests covering:
 - Game configuration and layout generation
 - Core game logic (scoring, distance, speed classification)
 - Train management and safe spawning
 - Switch behavior and track interactions
+- Level progression system (Level 0 → 1 → 2)
+- Track availability per level
 
 ## ⚠️ IMPORTANT: Testing Strategy
 **ALWAYS update tests when changing or adding features:**
