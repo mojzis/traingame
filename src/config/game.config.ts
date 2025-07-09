@@ -10,6 +10,7 @@ export const GAME_CONFIG = {
       track3: 300, // Lower middle track
       track4: 400, // Bottom main track
       track5: 500, // New bottom track
+      track6: 580, // Level 2 extra track (closer spacing)
     },
     trainSpeed: 100, // base pixels per second
     trainSpeedVariants: [80, 100, 120, 140], // Different speed options
@@ -18,6 +19,13 @@ export const GAME_CONFIG = {
       maxSpeedMultiplier: 2.5, // Maximum 2.5x speed
       spawnIntervalDecrease: 0.8, // Each level reduces spawn interval by 20%
       minSpawnInterval: 800, // Minimum spawn interval (ms)
+    },
+    levelProgression: {
+      level0Tracks: 3, // Number of tracks in beginner level
+      level1Points: 222, // Points needed to progress from level 0 to level 1
+      level2Points: 444, // Points needed for level 2
+      level2StopMultiplier: 1.8, // Stops 80% longer in level 2
+      level2SpawnMultiplier: 0.6, // 40% more frequent spawning in level 2
     },
     switches: {
       switch1: 200, // ON Track1, diverts TO Track2
@@ -63,10 +71,12 @@ export const GAME_CONFIG = {
   },
 } as const;
 
+import { TrackPosition } from '../types';
+
 // Layout generator for balanced switch and stop placement
-export function generateBalancedLayout() {
-  const tracks = GAME_CONFIG.physics.tracks;
-  const trackNames = Object.keys(tracks) as (keyof typeof tracks)[];
+export function generateBalancedLayout(score: number = 0) {
+  const availableTrackNames = getAvailableTracks(score);
+  const trackNames = availableTrackNames as TrackPosition[];
   const gameWidth = GAME_CONFIG.width;
   const switchSize = GAME_CONFIG.graphics.switchSize;
   const minSwitchSpacing = switchSize * 2; // Minimum spacing between switches
@@ -193,7 +203,7 @@ export function generateBalancedLayout() {
     }
   }
 
-  // Generate stops - ensure each has at least one switch before it
+  // Generate stops - ensure each has at least one switch before it with adequate spacing
   const stops: Record<string, { x: number; track: string; duration: number }> =
     {};
   const stopPositions = [
@@ -204,35 +214,58 @@ export function generateBalancedLayout() {
 
   stopPositions.forEach((stopX, index) => {
     // Choose random track for this stop
-    const track = trackNames[Math.floor(Math.random() * trackNames.length)];
+    let track = trackNames[Math.floor(Math.random() * trackNames.length)];
+    const minSwitchToStopDistance = 300; // Minimum distance from switch to stop for safe operation (increased for switching time)
 
-    // Ensure there's at least one switch before this stop on this track
+    // Check if the chosen track has adequate switch coverage for this stop position
     const switchesBeforeStop = switchConnections.filter(
-      (sw) => sw.source === track && sw.x < stopX - 100,
+      (sw) => sw.source === track && sw.x < stopX - minSwitchToStopDistance,
     );
 
+    // If no adequate switches, try to find a better track or add a switch
     if (switchesBeforeStop.length === 0) {
-      // Add a switch before this stop, respecting spacing
-      const earlierX = stopX - 150 - Math.random() * 100;
-      const targetTrack =
-        trackNames[Math.floor(Math.random() * trackNames.length)];
-      if (targetTrack !== track && isPositionAvailable(earlierX, track)) {
-        const id = `switch${switchId++}`;
-        switches[id] = Math.round(earlierX);
-        switchConnections.push({
-          id,
-          source: track,
-          target: targetTrack,
-          x: earlierX,
-        });
-        occupiedPositions.push({ x: earlierX, track });
+      // First, try to find a track that already has good switch coverage
+      let foundBetterTrack = false;
+      for (const candidateTrack of trackNames) {
+        const candidateSwitches = switchConnections.filter(
+          (sw) =>
+            sw.source === candidateTrack &&
+            sw.x < stopX - minSwitchToStopDistance,
+        );
+        if (candidateSwitches.length > 0) {
+          track = candidateTrack;
+          foundBetterTrack = true;
+          break;
+        }
+      }
+
+      // If no track has good coverage, add a switch before this stop
+      if (!foundBetterTrack) {
+        const earlierX = stopX - minSwitchToStopDistance - Math.random() * 150; // Extra buffer for emergency switches
+        const availableTargets = trackNames.filter((t) => t !== track);
+        const targetTrack =
+          availableTargets[Math.floor(Math.random() * availableTargets.length)];
+
+        if (earlierX > 100 && isPositionAvailable(earlierX, track)) {
+          // Ensure switch isn't too close to start
+          const id = `switch${switchId++}`;
+          switches[id] = Math.round(earlierX);
+          switchConnections.push({
+            id,
+            source: track,
+            target: targetTrack,
+            x: earlierX,
+          });
+          occupiedPositions.push({ x: earlierX, track });
+        }
       }
     }
 
+    const baseDuration = 1000 + Math.random() * 1500; // 1-2.5 second stops
     stops[`stop${index + 1}`] = {
       x: Math.round(stopX),
       track,
-      duration: 1000 + Math.random() * 1500, // 1-2.5 second stops
+      duration: calculateStopDuration(baseDuration, score),
     };
   });
 
@@ -265,5 +298,66 @@ export function calculateSpawnInterval(
 export function getSpeedLevel(score: number): number {
   return Math.floor(
     score / GAME_CONFIG.physics.speedProgression.pointsPerSpeedIncrease,
+  );
+}
+
+// Level progression helper functions
+export function getGameLevel(score: number): number {
+  const levelProgression = GAME_CONFIG.physics.levelProgression;
+
+  if (score >= levelProgression.level2Points) {
+    return 2;
+  } else if (score >= levelProgression.level1Points) {
+    return 1;
+  }
+  return 0; // Beginner level
+}
+
+export function getAvailableTracks(score: number): string[] {
+  const level = getGameLevel(score);
+
+  if (level === 0) {
+    // Beginner level: only 3 tracks (middle tracks for simplicity)
+    return ['track2', 'track3', 'track4'];
+  } else if (level === 1) {
+    // Basic level: 5 tracks
+    return ['track1', 'track2', 'track3', 'track4', 'track5'];
+  } else if (level >= 2) {
+    // Advanced level: all 6 tracks
+    return ['track1', 'track2', 'track3', 'track4', 'track5', 'track6'];
+  }
+
+  return ['track2', 'track3', 'track4']; // Default to beginner
+}
+
+export function calculateStopDuration(
+  baseDuration: number,
+  score: number,
+): number {
+  const level = getGameLevel(score);
+  if (level >= 2) {
+    return (
+      baseDuration * GAME_CONFIG.physics.levelProgression.level2StopMultiplier
+    );
+  }
+  return baseDuration;
+}
+
+export function calculateLevelSpawnInterval(
+  score: number,
+  baseInterval: number,
+): number {
+  // First apply speed progression
+  let interval = calculateSpawnInterval(score, baseInterval);
+
+  // Then apply level-specific multipliers
+  const level = getGameLevel(score);
+  if (level >= 2) {
+    interval *= GAME_CONFIG.physics.levelProgression.level2SpawnMultiplier;
+  }
+
+  return Math.max(
+    interval,
+    GAME_CONFIG.physics.speedProgression.minSpawnInterval,
   );
 }

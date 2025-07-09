@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Train } from '../entities/Train';
 import { TrackPosition } from '../types';
-import { GAME_CONFIG } from '../config/game.config';
+import { GAME_CONFIG, getAvailableTracks } from '../config/game.config';
 
 export class TrainManager {
   private scene: Phaser.Scene;
@@ -12,6 +12,7 @@ export class TrainManager {
   private speedMultiplier: number = 1.0;
   private currentSpawnInterval: number = 2000;
   private generatedLayout: any = null;
+  private currentScore: number = 0;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -22,6 +23,10 @@ export class TrainManager {
 
   setGeneratedLayout(layout: any): void {
     this.generatedLayout = layout;
+  }
+
+  setCurrentScore(score: number): void {
+    this.currentScore = score;
   }
 
   startSpawning(interval: number = 3000, speed: number = 100): void {
@@ -41,6 +46,18 @@ export class TrainManager {
   stopSpawning(): void {
     if (this.spawnTimer) {
       this.spawnTimer.destroy();
+    }
+  }
+
+  pauseSpawning(): void {
+    if (this.spawnTimer) {
+      this.spawnTimer.paused = true;
+    }
+  }
+
+  resumeSpawning(): void {
+    if (this.spawnTimer) {
+      this.spawnTimer.paused = false;
     }
   }
 
@@ -71,17 +88,13 @@ export class TrainManager {
   }
 
   private spawnTrain(): void {
-    // Randomly choose from all main tracks
-    const mainTracks: TrackPosition[] = [
-      'track1',
-      'track2',
-      'track3',
-      'track4',
-      'track5',
-    ];
+    // Use stored current score to determine available tracks
+    const availableTracks = getAvailableTracks(
+      this.currentScore,
+    ) as TrackPosition[];
 
     // Try each track to find a safe spawn
-    const shuffledTracks = [...mainTracks].sort(() => Math.random() - 0.5);
+    const shuffledTracks = [...availableTracks].sort(() => Math.random() - 0.5);
 
     for (const track of shuffledTracks) {
       const safeSpawn = this.findSafeSpawnForTrack(track);
@@ -258,6 +271,18 @@ export class TrainManager {
     this.trains.forEach((train) => {
       const body = train.body as Phaser.Physics.Arcade.Body;
       body.setVelocityX(0);
+    });
+  }
+
+  pauseAllTrains(): void {
+    this.trains.forEach((train) => {
+      train.pause();
+    });
+  }
+
+  resumeAllTrains(): void {
+    this.trains.forEach((train) => {
+      train.resume();
     });
   }
 

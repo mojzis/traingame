@@ -2,8 +2,9 @@ import Phaser from 'phaser';
 import {
   GAME_CONFIG,
   calculateSpeedMultiplier,
-  calculateSpawnInterval,
+  calculateLevelSpawnInterval,
   getSpeedLevel,
+  getGameLevel,
 } from '../config/game.config';
 import { TrainManager } from '../systems/TrainManager';
 import { CollisionManager } from '../systems/CollisionManager';
@@ -16,9 +17,12 @@ export class MainScene extends Phaser.Scene {
   private trackSystem!: TrackSystem;
   private scoreText!: Phaser.GameObjects.Text;
   private speedText!: Phaser.GameObjects.Text;
+  private levelText!: Phaser.GameObjects.Text;
   private score: number = 0;
   private isGameOver: boolean = false;
+  private isPaused: boolean = false;
   private currentSpeedLevel: number = 0;
+  private currentGameLevel: number = 0; // Start at level 0 (beginner)
   private baseSpawnInterval: number = 2000;
 
   constructor() {
@@ -34,15 +38,17 @@ export class MainScene extends Phaser.Scene {
   update(): void {
     if (this.isGameOver) return;
 
-    this.trainManager.update();
-    this.checkTrainSwitches();
-    this.updateScore();
+    if (!this.isPaused) {
+      this.trainManager.update();
+      this.checkTrainSwitches();
+      this.updateScore();
+    }
   }
 
   private setupSystems(): void {
-    // Track system with switches
+    // Track system with switches (pass current score for level-aware generation)
     this.trackSystem = new TrackSystem(this);
-    this.trackSystem.drawTracksWithSwitches();
+    this.trackSystem.drawTracksWithSwitches(this.score);
 
     // Get the generated layout
     const generatedLayout = this.trackSystem.getGeneratedLayout();
@@ -53,6 +59,7 @@ export class MainScene extends Phaser.Scene {
     // Train manager with layout awareness
     this.trainManager = new TrainManager(this);
     this.trainManager.setGeneratedLayout(generatedLayout);
+    this.trainManager.setCurrentScore(this.score);
 
     // Collision system
     this.collisionManager = new CollisionManager(this);
@@ -88,8 +95,26 @@ export class MainScene extends Phaser.Scene {
       fontFamily: 'Comic Sans MS, cursive',
     });
 
+    // Level indicator
+    this.levelText = this.add.text(
+      GAME_CONFIG.width - 150,
+      80,
+      'Level: 0 (Beginner)',
+      {
+        fontSize: '18px',
+        color: '#9b59b6',
+        fontFamily: 'Comic Sans MS, cursive',
+      },
+    );
+
     // Instructions
-    this.add.text(20, 20, 'Click switches to connect tracks!', {
+    // Show level-appropriate instructions
+    const instructionText =
+      this.currentGameLevel === 0
+        ? 'Level 0: Learn the basics with 3 tracks!'
+        : 'Click switches to connect tracks!';
+
+    this.add.text(20, 20, instructionText, {
       fontSize: '16px',
       color: '#666',
       fontFamily: 'Comic Sans MS, cursive',
@@ -124,24 +149,36 @@ export class MainScene extends Phaser.Scene {
       fontFamily: 'Comic Sans MS, cursive',
     });
 
+    this.add.text(20, 120, 'Press SPACE to pause/unpause', {
+      fontSize: '12px',
+      color: '#999',
+      fontFamily: 'Comic Sans MS, cursive',
+    });
+
     // Debug info
     if (import.meta.env.DEV) {
-      this.add.text(10, 120, 'Train Switch Game - Dev Mode', {
+      this.add.text(10, 140, 'Train Switch Game - Dev Mode', {
         fontSize: '14px',
         color: '#999',
       });
     }
 
-    // Add keyboard input for regeneration
+    // Add keyboard input for regeneration and pause
     this.input.keyboard?.on('keydown-R', () => {
       this.scene.restart();
+    });
+
+    this.input.keyboard?.on('keydown-SPACE', () => {
+      this.togglePause();
     });
   }
 
   private startGame(): void {
     this.isGameOver = false;
+    this.isPaused = false;
     this.score = 0;
     this.currentSpeedLevel = 0;
+    this.currentGameLevel = getGameLevel(this.score);
     this.trainManager.startSpawning(this.baseSpawnInterval);
   }
 
@@ -155,7 +192,9 @@ export class MainScene extends Phaser.Scene {
         this.score += 10;
 
         this.scoreText.setText(`Score: ${this.score}`);
+        this.trainManager.setCurrentScore(this.score);
         this.updateGameSpeed();
+        this.checkLevelProgression();
       }
     });
   }
@@ -166,16 +205,16 @@ export class MainScene extends Phaser.Scene {
     if (newSpeedLevel > this.currentSpeedLevel) {
       this.currentSpeedLevel = newSpeedLevel;
       const speedMultiplier = calculateSpeedMultiplier(this.score);
-      const newSpawnInterval = calculateSpawnInterval(
-        this.score,
-        this.baseSpawnInterval,
-      );
 
       // Update UI
       this.speedText.setText(`Speed: ${speedMultiplier.toFixed(1)}x`);
 
-      // Update train manager with new spawn interval
-      this.trainManager.updateSpawnInterval(newSpawnInterval);
+      // Update train manager with new spawn interval (using level-aware calculation)
+      const levelAwareInterval = calculateLevelSpawnInterval(
+        this.score,
+        this.baseSpawnInterval,
+      );
+      this.trainManager.updateSpawnInterval(levelAwareInterval);
 
       // Update all existing trains with new speed multiplier
       this.trainManager.updateSpeedMultiplier(speedMultiplier);
@@ -183,6 +222,56 @@ export class MainScene extends Phaser.Scene {
       // Show speed level up notification
       this.showSpeedBonus(`SPEED UP! Level ${newSpeedLevel + 1}`);
     }
+  }
+
+  private checkLevelProgression(): void {
+    const newGameLevel = getGameLevel(this.score);
+
+    if (newGameLevel > this.currentGameLevel) {
+      this.currentGameLevel = newGameLevel;
+
+      if (newGameLevel === 1) {
+        this.levelText.setText('Level: 1 (Basic)');
+        this.showLevelUpNotification(
+          'LEVEL 1!\nNow with 5 tracks!\nGood luck!',
+        );
+
+        // Regenerate layout with new tracks
+        this.scene.restart();
+      } else if (newGameLevel === 2) {
+        this.levelText.setText(`Level: ${newGameLevel} (Advanced)`);
+        this.showLevelUpNotification(
+          'LEVEL 2!\nMore tracks, longer stops, more trains!',
+        );
+
+        // Regenerate layout with new tracks
+        this.scene.restart();
+      }
+    }
+  }
+
+  private showLevelUpNotification(text: string): void {
+    const notification = this.add.text(
+      GAME_CONFIG.width / 2,
+      GAME_CONFIG.height / 2 - 150,
+      text,
+      {
+        fontSize: '36px',
+        color: '#9b59b6',
+        fontFamily: 'Comic Sans MS, cursive',
+        align: 'center',
+      },
+    );
+    notification.setOrigin(0.5);
+
+    this.tweens.add({
+      targets: notification,
+      y: notification.y - 60,
+      alpha: 0,
+      duration: 3000,
+      ease: 'Power2',
+      onComplete: () => notification.destroy(),
+    });
   }
 
   private showBonus(text: string): void {
@@ -231,8 +320,63 @@ export class MainScene extends Phaser.Scene {
     });
   }
 
+  private togglePause(): void {
+    if (this.isGameOver) return;
+
+    this.isPaused = !this.isPaused;
+
+    if (this.isPaused) {
+      this.trainManager.pauseSpawning();
+      this.trainManager.pauseAllTrains();
+      this.showPauseOverlay();
+    } else {
+      this.trainManager.resumeSpawning();
+      this.trainManager.resumeAllTrains();
+      this.hidePauseOverlay();
+    }
+  }
+
+  private showPauseOverlay(): void {
+    const pauseOverlay = this.add.rectangle(
+      GAME_CONFIG.width / 2,
+      GAME_CONFIG.height / 2,
+      GAME_CONFIG.width,
+      GAME_CONFIG.height,
+      0x000000,
+      0.5,
+    );
+    pauseOverlay.setDepth(1000);
+    pauseOverlay.setData('pauseOverlay', true);
+
+    const pauseText = this.add.text(
+      GAME_CONFIG.width / 2,
+      GAME_CONFIG.height / 2,
+      'PAUSED\nPress SPACE to continue',
+      {
+        fontSize: '48px',
+        color: '#ffffff',
+        fontFamily: 'Comic Sans MS, cursive',
+        align: 'center',
+      },
+    );
+    pauseText.setOrigin(0.5);
+    pauseText.setDepth(1001);
+    pauseText.setData('pauseText', true);
+  }
+
+  private hidePauseOverlay(): void {
+    // Remove pause overlay and text
+    this.children.list
+      .filter((child: any) => child.getData && child.getData('pauseOverlay'))
+      .forEach((child) => child.destroy());
+    this.children.list
+      .filter((child: any) => child.getData && child.getData('pauseText'))
+      .forEach((child) => child.destroy());
+  }
+
   private handleGameOver(): void {
     this.isGameOver = true;
+    this.isPaused = false;
     this.trainManager.stopSpawning();
     this.trainManager.stopAllTrains();
 

@@ -5,6 +5,8 @@ import {
   calculateSpeedMultiplier,
   calculateSpawnInterval,
   getSpeedLevel,
+  getGameLevel,
+  getAvailableTracks,
 } from '../config/game.config';
 
 describe('Game Configuration', () => {
@@ -15,10 +17,11 @@ describe('Game Configuration', () => {
     expect(GAME_CONFIG.height).toBe(600);
   });
 
-  it('should have 5 tracks defined', () => {
-    expect(Object.keys(GAME_CONFIG.physics.tracks)).toHaveLength(5);
+  it('should have 6 tracks defined (including level 2)', () => {
+    expect(Object.keys(GAME_CONFIG.physics.tracks)).toHaveLength(6);
     expect(GAME_CONFIG.physics.tracks.track1).toBe(100);
     expect(GAME_CONFIG.physics.tracks.track5).toBe(500);
+    expect(GAME_CONFIG.physics.tracks.track6).toBe(580);
   });
 
   it('should have train speed variants', () => {
@@ -237,5 +240,80 @@ describe('Speed Progression', () => {
         expect(nextInterval).toBeLessThanOrEqual(currentInterval);
       }
     }
+  });
+});
+
+describe('Level Progression', () => {
+  it('should correctly determine game level based on score', () => {
+    // Level 0: 0-221 points
+    expect(getGameLevel(0)).toBe(0);
+    expect(getGameLevel(100)).toBe(0);
+    expect(getGameLevel(221)).toBe(0);
+
+    // Level 1: 222-443 points
+    expect(getGameLevel(222)).toBe(1);
+    expect(getGameLevel(300)).toBe(1);
+    expect(getGameLevel(443)).toBe(1);
+
+    // Level 2: 444+ points
+    expect(getGameLevel(444)).toBe(2);
+    expect(getGameLevel(500)).toBe(2);
+    expect(getGameLevel(1000)).toBe(2);
+  });
+
+  it('should return correct available tracks for each level', () => {
+    // Level 0: Only 3 tracks (middle tracks)
+    const level0Tracks = getAvailableTracks(0);
+    expect(level0Tracks).toEqual(['track2', 'track3', 'track4']);
+    expect(level0Tracks.length).toBe(3);
+
+    // Level 1: 5 tracks
+    const level1Tracks = getAvailableTracks(222);
+    expect(level1Tracks).toEqual([
+      'track1',
+      'track2',
+      'track3',
+      'track4',
+      'track5',
+    ]);
+    expect(level1Tracks.length).toBe(5);
+
+    // Level 2: All 6 tracks
+    const level2Tracks = getAvailableTracks(444);
+    expect(level2Tracks).toEqual([
+      'track1',
+      'track2',
+      'track3',
+      'track4',
+      'track5',
+      'track6',
+    ]);
+    expect(level2Tracks.length).toBe(6);
+  });
+
+  it('should generate layouts with appropriate tracks for each level', () => {
+    // Level 0 layout
+    const level0Layout = generateBalancedLayout(0);
+    level0Layout.connections.forEach((conn: any) => {
+      expect(['track2', 'track3', 'track4']).toContain(conn.source);
+      expect(['track2', 'track3', 'track4']).toContain(conn.target);
+    });
+
+    // Level 1 layout
+    const level1Layout = generateBalancedLayout(222);
+    level1Layout.connections.forEach((conn: any) => {
+      expect(['track1', 'track2', 'track3', 'track4', 'track5']).toContain(
+        conn.source,
+      );
+      expect(['track1', 'track2', 'track3', 'track4', 'track5']).toContain(
+        conn.target,
+      );
+    });
+  });
+
+  it('should have proper level configuration values', () => {
+    expect(GAME_CONFIG.physics.levelProgression.level0Tracks).toBe(3);
+    expect(GAME_CONFIG.physics.levelProgression.level1Points).toBe(222);
+    expect(GAME_CONFIG.physics.levelProgression.level2Points).toBe(444);
   });
 });

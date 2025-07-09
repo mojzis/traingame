@@ -13,6 +13,9 @@ export class Train extends Phaser.GameObjects.Rectangle {
   private switchStartY: number = 0;
   private switchTargetY: number = 0;
   private isStopped: boolean = false;
+  private isPaused: boolean = false;
+  private pausedVelocity: number = 0;
+  private stopTimer?: Phaser.Time.TimerEvent;
   private hasVisitedStops: Set<string> = new Set();
   private static generatedStops: any = null;
 
@@ -60,6 +63,8 @@ export class Train extends Phaser.GameObjects.Rectangle {
   }
 
   update(): void {
+    if (this.isPaused) return;
+
     if (this.isSwitching) {
       this.updateSwitchMovement();
     }
@@ -173,12 +178,43 @@ export class Train extends Phaser.GameObjects.Rectangle {
     // Update current speed based on original speed and multiplier
     this.speed = this.originalSpeed * multiplier;
 
-    // Update physics velocity if train is not stopped and not switching
-    if (!this.isStopped && !this.isSwitching) {
+    // Update physics velocity if train is not stopped, not switching, and not paused
+    if (!this.isStopped && !this.isSwitching && !this.isPaused) {
       const body = this.body as Phaser.Physics.Arcade.Body;
       if (body) {
         body.setVelocityX(this.speed);
       }
+    }
+  }
+
+  pause(): void {
+    if (this.isPaused) return;
+
+    this.isPaused = true;
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    if (body) {
+      this.pausedVelocity = body.velocity.x;
+      body.setVelocityX(0);
+    }
+
+    // Pause the stop timer if it exists
+    if (this.stopTimer) {
+      this.stopTimer.paused = true;
+    }
+  }
+
+  resume(): void {
+    if (!this.isPaused) return;
+
+    this.isPaused = false;
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    if (body && !this.isStopped) {
+      body.setVelocityX(this.pausedVelocity);
+    }
+
+    // Resume the stop timer if it exists
+    if (this.stopTimer) {
+      this.stopTimer.paused = false;
     }
   }
 }

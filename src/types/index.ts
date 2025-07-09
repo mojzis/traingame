@@ -3,7 +3,8 @@ export type TrackPosition =
   | 'track2'
   | 'track3'
   | 'track4'
-  | 'track5';
+  | 'track5'
+  | 'track6';
 
 export interface Position {
   x: number;

@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
 import { Switch } from '../entities/Switch';
-import { GAME_CONFIG, generateBalancedLayout } from '../config/game.config';
+import {
+  GAME_CONFIG,
+  generateBalancedLayout,
+  getAvailableTracks,
+} from '../config/game.config';
 import { TrackPosition } from '../types';
 
 export class TrackSystem {
@@ -32,11 +36,14 @@ export class TrackSystem {
     return switchObj;
   }
 
-  drawTracksWithSwitches(): void {
+  drawTracksWithSwitches(score: number = 0): void {
+    // Generate layout based on current score/level
+    this.generatedLayout = generateBalancedLayout(score);
+
     const graphics = this.scene.add.graphics();
 
-    // Draw all main tracks
-    this.drawMainTracks(graphics);
+    // Draw all main tracks (level-aware)
+    this.drawMainTracks(graphics, score);
     this.drawSwitchConnections(graphics);
     this.drawStops(graphics);
 
@@ -44,13 +51,21 @@ export class TrackSystem {
     this.createSwitches();
   }
 
-  private drawMainTracks(graphics: Phaser.GameObjects.Graphics): void {
-    // Draw main tracks (full width)
-    this.drawTrackSegment(graphics, 0, GAME_CONFIG.width, 'track1');
-    this.drawTrackSegment(graphics, 0, GAME_CONFIG.width, 'track2');
-    this.drawTrackSegment(graphics, 0, GAME_CONFIG.width, 'track3');
-    this.drawTrackSegment(graphics, 0, GAME_CONFIG.width, 'track4');
-    this.drawTrackSegment(graphics, 0, GAME_CONFIG.width, 'track5');
+  private drawMainTracks(
+    graphics: Phaser.GameObjects.Graphics,
+    score: number = 0,
+  ): void {
+    const availableTracks = getAvailableTracks(score);
+
+    // Draw tracks based on current level
+    availableTracks.forEach((track: string) => {
+      this.drawTrackSegment(
+        graphics,
+        0,
+        GAME_CONFIG.width,
+        track as TrackPosition,
+      );
+    });
   }
 
   private drawSwitchConnections(graphics: Phaser.GameObjects.Graphics): void {
