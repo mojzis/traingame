@@ -95,8 +95,12 @@ export class TrainManager {
 
     // Validate that collision prevention is possible
     if (!this.canPreventCollisions(availableTracks)) {
-      console.warn('Cannot guarantee collision prevention - skipping spawn');
-      return;
+      // Occasionally allow spawning even with limited switches for more action
+      if (Math.random() > 0.7) {
+        console.log('Limited switches - proceeding with cautious spawn');
+      } else {
+        return;
+      }
     }
 
     // Try each track to find a safe spawn
@@ -113,8 +117,7 @@ export class TrainManager {
       }
     }
 
-    // If no safe spawn found, don't spawn this time
-    console.log('No safe spawn location found on any track');
+    // If no safe spawn found, don't spawn this time (reduced logging)
   }
 
   private canPreventCollisions(tracks: TrackPosition[]): boolean {
@@ -130,9 +133,10 @@ export class TrainManager {
       }
     });
 
-    // Every track must have at least one switch
+    // Relaxed: as long as most tracks have switches, allow spawning
+    const switchCoverage = tracksWithSwitches / tracks.length;
     return (
-      tracksWithSwitches === tracks.length && totalSwitches >= tracks.length
+      switchCoverage >= 0.8 && totalSwitches >= Math.floor(tracks.length * 0.8)
     );
   }
 
@@ -151,9 +155,7 @@ export class TrainManager {
     const availableSwitches = this.getAvailableSwitchesForTrack(track);
     if (availableSwitches.length === 0) {
       // NO SWITCHES = NO SPAWNING (prevents unavoidable collisions)
-      console.warn(
-        `Track ${track} has no switches - skipping spawn for safety`,
-      );
+      // Reduced logging for performance
       return null;
     }
 
@@ -174,20 +176,23 @@ export class TrainManager {
       train.x > rightmost.x ? train : rightmost,
     );
 
-    // Find the closest reachable switch ahead of the lead train
+    // Find reachable switches ahead of the lead train (relaxed requirement)
     const reachableSwitches = availableSwitches.filter(
-      (sw) => sw.x > rightmostTrain.x + 100, // Switch must be ahead with buffer
+      (sw) => sw.x > rightmostTrain.x + 50, // Reduced buffer - switch just needs to be ahead
     );
 
-    if (reachableSwitches.length === 0) {
-      // No reachable switches ahead = potential unavoidable collision
-      console.warn(`No reachable switches ahead on ${track} - blocking spawn`);
-      return null;
+    // Allow spawning even if no switches ahead, but be more careful about distance
+    const hasReachableSwitches = reachableSwitches.length > 0;
+    if (!hasReachableSwitches) {
+      console.log(
+        `No switches immediately ahead on ${track} - using extra caution`,
+      );
     }
 
     // Calculate safe spawning parameters with layout awareness
     const minSafeDistance = this.calculateSafeDistanceForTrack(track);
-    const reactionTime = 3000; // 3 seconds reaction time in milliseconds
+    // Reduced reaction time for more aggressive spawning
+    const reactionTime = hasReachableSwitches ? 2000 : 3000; // 2s if switches available, 3s if not
     const pixelsPerMs = rightmostTrain.getSpeed() / 1000;
 
     // Consider upcoming stops that might slow down the lead train
@@ -217,6 +222,14 @@ export class TrainManager {
           safeSpeedOptions[Math.floor(Math.random() * safeSpeedOptions.length)];
         return { speed };
       }
+    } else if (
+      hasReachableSwitches &&
+      rightmostTrain.x > minSafeDistance * 0.8
+    ) {
+      // Aggressive spawning: if switches are available and we're close to safe distance
+      const speedVariants = GAME_CONFIG.physics.trainSpeedVariants;
+      const conservativeSpeed = Math.min(...speedVariants); // Use slowest speed for aggressive spawns
+      return { speed: conservativeSpeed };
     }
 
     return null; // Not safe to spawn on this track
@@ -231,22 +244,21 @@ export class TrainManager {
   }
 
   private calculateSafeDistanceForTrack(track: TrackPosition): number {
-    const baseSafeDistance = 250; // Increased base distance
+    const baseSafeDistance = 200; // Reduced from 250 for more aggressive spawning
     const availableSwitches = this.getAvailableSwitchesForTrack(track);
 
     if (availableSwitches.length === 0) {
       // No escape routes, should never happen with new generation
-      return baseSafeDistance * 4;
+      return baseSafeDistance * 3; // Reduced from 4x
     }
 
     // Find the closest switch that could provide an escape route
     const sortedSwitches = [...availableSwitches].sort((a, b) => a.x - b.x);
     const firstSwitch = sortedSwitches[0];
 
-    // Need enough distance to react and reach the first switch
-    // Account for reaction time + time to reach switch
-    const reactionDistance = 150; // Distance covered during reaction time
-    const switchBuffer = 100; // Extra buffer to activate switch
+    // Reduced buffers for more aggressive spawning
+    const reactionDistance = 100; // Reduced from 150
+    const switchBuffer = 75; // Reduced from 100
 
     return Math.max(
       baseSafeDistance,

@@ -23,7 +23,7 @@ export class MainScene extends Phaser.Scene {
   private isPaused: boolean = false;
   private currentSpeedLevel: number = 0;
   private currentGameLevel: number = 0; // Start at level 0 (beginner)
-  private baseSpawnInterval: number = 2000;
+  private baseSpawnInterval: number = 1200; // Increased frequency from 2000ms to 1200ms
 
   constructor() {
     super({ key: 'MainScene' });

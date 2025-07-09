@@ -106,7 +106,7 @@ describe('TrainManager', () => {
     const safeDistanceWithoutSwitches =
       trainManager.calculateSafeDistanceForTrack('track5');
 
-    expect(safeDistanceWithSwitches).toBeGreaterThan(250);
-    expect(safeDistanceWithoutSwitches).toBe(1000); // 4x base distance (250 * 4) for tracks with no switches
+    expect(safeDistanceWithSwitches).toBeGreaterThan(200);
+    expect(safeDistanceWithoutSwitches).toBe(600); // 3x base distance (200 * 3) for tracks with no switches
   });
 });
