@@ -132,19 +132,26 @@ export class Train extends Phaser.GameObjects.Rectangle {
   private checkStops(): void {
     if (this.isStopped) return;
 
-    const stops = Train.generatedStops || GAME_CONFIG.physics.stops;
-    Object.entries(stops).forEach(([stopId, stop]: [string, any]) => {
-      if (this.hasVisitedStops.has(stopId)) return;
+    // Use dynamically generated stops (always set by MainScene)
+    if (!Train.generatedStops) {
+      console.warn('No generated stops available - skipping stop check');
+      return;
+    }
 
-      const stopRange = 30;
-      const isAtStop =
-        Math.abs(this.x - stop.x) < stopRange &&
-        this.currentTrack === stop.track;
+    Object.entries(Train.generatedStops).forEach(
+      ([stopId, stop]: [string, any]) => {
+        if (this.hasVisitedStops.has(stopId)) return;
 
-      if (isAtStop) {
-        this.stopAtStation(stopId, stop.duration);
-      }
-    });
+        const stopRange = 30;
+        const isAtStop =
+          Math.abs(this.x - stop.x) < stopRange &&
+          this.currentTrack === stop.track;
+
+        if (isAtStop) {
+          this.stopAtStation(stopId, stop.duration);
+        }
+      },
+    );
   }
 
   private stopAtStation(stopId: string, duration: number): void {

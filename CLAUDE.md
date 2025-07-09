@@ -45,7 +45,7 @@ These are the exact steps that GitHub Actions runs, so running them locally prev
 7. **Pause Feature**: Press SPACE to pause/unpause the game
 
 ## Important Files
-- `src/config/game.config.ts` - Central game configuration and layout generator
+- `src/config/game.config.ts` - Central game configuration and dynamic layout generator (clean config with no hardcoded switches/stops)
 - `src/entities/Train.ts` - Train physics with 10ms velocity delay fix
 - `src/entities/Switch.ts` - Unidirectional switch implementation
 - `src/systems/TrainManager.ts` - Safe spawning and train lifecycle

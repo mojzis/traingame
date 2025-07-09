@@ -27,29 +27,6 @@ export const GAME_CONFIG = {
       level2StopMultiplier: 1.8, // Stops 80% longer in level 2
       level2SpawnMultiplier: 0.6, // 40% more frequent spawning in level 2
     },
-    switches: {
-      switch1: 200, // ON Track1, diverts TO Track2
-      switch2: 350, // ON Track1, diverts TO Track3
-      switch3: 500, // ON Track2, diverts TO Track3
-      switch4: 650, // ON Track2, diverts TO Track4
-      switch5: 800, // ON Track3, diverts TO Track4
-      switch6: 950, // ON Track3, diverts TO Track5
-      switch7: 1100, // ON Track4, diverts TO Track5
-      // Backward switches
-      switch8: 300, // ON Track2, diverts TO Track1
-      switch9: 450, // ON Track3, diverts TO Track1
-      switch10: 600, // ON Track3, diverts TO Track2
-      switch11: 750, // ON Track4, diverts TO Track2
-      switch12: 900, // ON Track4, diverts TO Track3
-      switch13: 1050, // ON Track5, diverts TO Track3
-      switch14: 1150, // ON Track5, diverts TO Track4
-      switch15: 550, // ON Track4, diverts TO Track3 (early diversion for track4)
-    },
-    stops: {
-      stop1: { x: 450, track: 'track2', duration: 2000 }, // 2 second stop (switch8 at x:300 can divert)
-      stop2: { x: 850, track: 'track4', duration: 1500 }, // 1.5 second stop (switch11 at x:750 can divert)
-      stop3: { x: 950, track: 'track1', duration: 1000 }, // 1 second stop (switches 1&2 can divert)
-    },
   },
 
   graphics: {
