@@ -34,7 +34,11 @@ These are the exact steps that GitHub Actions runs, so running them locally prev
    - Level 1 (Basic): 5 tracks (track1-5) - unlocks at 222 points
    - Level 2 (Advanced): 6 tracks (all) - unlocks at 444 points
 2. **Unidirectional Switches**: Only affect trains coming from source track
-3. **Safe Spawning**: Layout-aware algorithm prevents unavoidable crashes  
+3. **Enhanced Safe Spawning**: 
+   - GUARANTEES at least 1 switch per track
+   - Validates reachable switches before spawning
+   - Blocks spawning when no escape route exists
+   - Ensures every collision is preventable  
 4. **Curved Movement**: Trains follow quadratic curves when switching
 5. **Speed Variants**: Gray=slow, Blue=normal, Red=fast, Purple=very fast
 6. **Strategic Gameplay**: Every collision is preventable with proper switching

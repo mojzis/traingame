@@ -136,13 +136,22 @@ export function generateBalancedLayout(score: number = 0) {
     return null;
   }
 
+  // CRITICAL: Ensure EVERY track has at least one switch for safe gameplay
+  const trackSwitchCount: Record<string, number> = {};
+  trackNames.forEach((track) => {
+    trackSwitchCount[track] = 0;
+  });
+
   // Forward switches (track N -> track N+1)
   for (let i = 0; i < trackNames.length - 1; i++) {
     const sourceTrack = trackNames[i];
     const targetTrack = trackNames[i + 1];
 
-    // Add 1-2 switches for this track pair
-    const numSwitches = Math.random() < 0.7 ? 1 : 2;
+    // GUARANTEE at least 1 switch for this track pair
+    const minSwitches = 1;
+    const maxSwitches = 2;
+    const numSwitches = Math.random() < 0.7 ? minSwitches : maxSwitches;
+
     for (let j = 0; j < numSwitches; j++) {
       const x = findAvailablePosition(sourceTrack, switchPositions);
       if (x !== null) {
@@ -155,17 +164,18 @@ export function generateBalancedLayout(score: number = 0) {
           x,
         });
         occupiedPositions.push({ x, track: sourceTrack });
+        trackSwitchCount[sourceTrack]++;
       }
     }
   }
 
-  // Backward switches (track N -> track N-1) - fewer of these
+  // Backward switches (track N -> track N-1)
   for (let i = 1; i < trackNames.length; i++) {
     const sourceTrack = trackNames[i];
     const targetTrack = trackNames[i - 1];
 
-    // Add 1 backward switch per track pair (40% chance, reduced to prevent conflicts)
-    if (Math.random() < 0.4) {
+    // Add backward switch only if track needs more switches or randomly
+    if (trackSwitchCount[sourceTrack] === 0 || Math.random() < 0.4) {
       const x = findAvailablePosition(sourceTrack, switchPositions);
       if (x !== null) {
         const id = `switch${switchId++}`;
@@ -177,6 +187,7 @@ export function generateBalancedLayout(score: number = 0) {
           x,
         });
         occupiedPositions.push({ x, track: sourceTrack });
+        trackSwitchCount[sourceTrack]++;
       }
     }
   }
@@ -186,8 +197,8 @@ export function generateBalancedLayout(score: number = 0) {
     const sourceTrack = trackNames[i];
     const targetTrack = trackNames[i + 2];
 
-    // Add skip switches (20% chance, reduced to prevent overcrowding)
-    if (Math.random() < 0.2) {
+    // Add skip switches only if track needs more switches or randomly
+    if (trackSwitchCount[sourceTrack] === 0 || Math.random() < 0.2) {
       const x = findAvailablePosition(sourceTrack, switchPositions);
       if (x !== null) {
         const id = `switch${switchId++}`;
@@ -199,9 +210,38 @@ export function generateBalancedLayout(score: number = 0) {
           x,
         });
         occupiedPositions.push({ x, track: sourceTrack });
+        trackSwitchCount[sourceTrack]++;
       }
     }
   }
+
+  // CRITICAL: Ensure every track has at least one switch
+  trackNames.forEach((track) => {
+    if (trackSwitchCount[track] === 0) {
+      // Force add a switch for this track
+      const possibleTargets = trackNames.filter((t) => t !== track);
+      const targetTrack =
+        possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
+
+      // Try multiple positions to find a valid spot
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const x = 200 + Math.random() * (gameWidth - 400); // Keep away from edges
+        if (isPositionAvailable(x, track)) {
+          const id = `switch${switchId++}`;
+          switches[id] = Math.round(x);
+          switchConnections.push({
+            id,
+            source: track,
+            target: targetTrack,
+            x: Math.round(x),
+          });
+          occupiedPositions.push({ x: Math.round(x), track });
+          trackSwitchCount[track]++;
+          break;
+        }
+      }
+    }
+  });
 
   // Generate stops - ensure each has at least one switch before it with adequate spacing
   const stops: Record<string, { x: number; track: string; duration: number }> =
@@ -268,6 +308,10 @@ export function generateBalancedLayout(score: number = 0) {
       duration: calculateStopDuration(baseDuration, score),
     };
   });
+
+  // Debug: Log switch distribution
+  console.log('Switch distribution per track:', trackSwitchCount);
+  console.log('Total switches generated:', switchConnections.length);
 
   return { switches, stops, connections: switchConnections };
 }

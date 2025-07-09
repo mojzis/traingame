@@ -93,6 +93,12 @@ export class TrainManager {
       this.currentScore,
     ) as TrackPosition[];
 
+    // Validate that collision prevention is possible
+    if (!this.canPreventCollisions(availableTracks)) {
+      console.warn('Cannot guarantee collision prevention - skipping spawn');
+      return;
+    }
+
     // Try each track to find a safe spawn
     const shuffledTracks = [...availableTracks].sort(() => Math.random() - 0.5);
 
@@ -108,6 +114,26 @@ export class TrainManager {
     }
 
     // If no safe spawn found, don't spawn this time
+    console.log('No safe spawn location found on any track');
+  }
+
+  private canPreventCollisions(tracks: TrackPosition[]): boolean {
+    // Check if we have enough switches to prevent collisions
+    let totalSwitches = 0;
+    let tracksWithSwitches = 0;
+
+    tracks.forEach((track) => {
+      const switches = this.getAvailableSwitchesForTrack(track);
+      if (switches.length > 0) {
+        tracksWithSwitches++;
+        totalSwitches += switches.length;
+      }
+    });
+
+    // Every track must have at least one switch
+    return (
+      tracksWithSwitches === tracks.length && totalSwitches >= tracks.length
+    );
   }
 
   private findSafeSpawnForTrack(
@@ -119,6 +145,16 @@ export class TrainManager {
       const speed =
         speedVariants[Math.floor(Math.random() * speedVariants.length)];
       return { speed };
+    }
+
+    // First check if this track has any switches at all
+    const availableSwitches = this.getAvailableSwitchesForTrack(track);
+    if (availableSwitches.length === 0) {
+      // NO SWITCHES = NO SPAWNING (prevents unavoidable collisions)
+      console.warn(
+        `Track ${track} has no switches - skipping spawn for safety`,
+      );
+      return null;
     }
 
     // Find the rightmost (most recent) train on this track
@@ -138,14 +174,15 @@ export class TrainManager {
       train.x > rightmost.x ? train : rightmost,
     );
 
-    // Check if there are viable escape routes for this track
-    const availableSwitches = this.getAvailableSwitchesForTrack(track);
-    if (availableSwitches.length === 0) {
-      // No switches available for this track, be extra cautious
-      const extraSafeDistance = 400;
-      if (rightmostTrain.x < extraSafeDistance) {
-        return null; // Not safe to spawn
-      }
+    // Find the closest reachable switch ahead of the lead train
+    const reachableSwitches = availableSwitches.filter(
+      (sw) => sw.x > rightmostTrain.x + 100, // Switch must be ahead with buffer
+    );
+
+    if (reachableSwitches.length === 0) {
+      // No reachable switches ahead = potential unavoidable collision
+      console.warn(`No reachable switches ahead on ${track} - blocking spawn`);
+      return null;
     }
 
     // Calculate safe spawning parameters with layout awareness
@@ -194,21 +231,27 @@ export class TrainManager {
   }
 
   private calculateSafeDistanceForTrack(track: TrackPosition): number {
-    const baseSafeDistance = 200;
+    const baseSafeDistance = 250; // Increased base distance
     const availableSwitches = this.getAvailableSwitchesForTrack(track);
 
     if (availableSwitches.length === 0) {
-      // No escape routes, need much more distance
-      return baseSafeDistance * 2;
+      // No escape routes, should never happen with new generation
+      return baseSafeDistance * 4;
     }
 
     // Find the closest switch that could provide an escape route
-    const closestSwitch = availableSwitches.reduce((closest, sw) =>
-      sw.x < closest.x ? sw : closest,
-    );
+    const sortedSwitches = [...availableSwitches].sort((a, b) => a.x - b.x);
+    const firstSwitch = sortedSwitches[0];
 
-    // Need enough distance to reach the first escape route
-    return Math.max(baseSafeDistance, closestSwitch.x + 100);
+    // Need enough distance to react and reach the first switch
+    // Account for reaction time + time to reach switch
+    const reactionDistance = 150; // Distance covered during reaction time
+    const switchBuffer = 100; // Extra buffer to activate switch
+
+    return Math.max(
+      baseSafeDistance,
+      firstSwitch.x + reactionDistance + switchBuffer,
+    );
   }
 
   private getUpcomingStopsForTrack(
