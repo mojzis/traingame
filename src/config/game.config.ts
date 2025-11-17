@@ -49,9 +49,10 @@ export const GAME_CONFIG = {
 } as const;
 
 import { TrackPosition } from '../types';
+import type { GeneratedLayout } from '../types/layout';
 
 // Layout generator for balanced switch and stop placement
-export function generateBalancedLayout(score: number = 0) {
+export function generateBalancedLayout(score: number = 0): GeneratedLayout {
   const availableTrackNames = getAvailableTracks(score);
   const trackNames = availableTrackNames as TrackPosition[];
   const gameWidth = GAME_CONFIG.width;
@@ -83,8 +84,8 @@ export function generateBalancedLayout(score: number = 0) {
   const switches: Record<string, number> = {};
   const switchConnections: Array<{
     id: string;
-    source: string;
-    target: string;
+    source: TrackPosition;
+    target: TrackPosition;
     x: number;
   }> = [];
   let switchId = 1;
@@ -451,8 +452,10 @@ export function generateBalancedLayout(score: number = 0) {
   });
 
   // Generate stops - ensure each has at least one switch before it with adequate spacing
-  const stops: Record<string, { x: number; track: string; duration: number }> =
-    {};
+  const stops: Record<
+    string,
+    { x: number; track: TrackPosition; duration: number }
+  > = {};
   const stopPositions = [
     gameWidth * 0.4, // 40% across
     gameWidth * 0.6, // 60% across

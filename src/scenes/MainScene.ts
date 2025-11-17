@@ -10,6 +10,7 @@ import { TrainManager } from '../systems/TrainManager';
 import { CollisionManager } from '../systems/CollisionManager';
 import { TrackSystem } from '../systems/TrackSystem';
 import { Train } from '../entities/Train';
+import type { GameObjectWithData } from '../types/layout';
 
 export class MainScene extends Phaser.Scene {
   private trainManager!: TrainManager;
@@ -367,10 +368,20 @@ export class MainScene extends Phaser.Scene {
   private hidePauseOverlay(): void {
     // Remove pause overlay and text
     this.children.list
-      .filter((child: any) => child.getData && child.getData('pauseOverlay'))
+      .filter(
+        (child): child is GameObjectWithData =>
+          'getData' in child &&
+          typeof child.getData === 'function' &&
+          child.getData('pauseOverlay'),
+      )
       .forEach((child) => child.destroy());
     this.children.list
-      .filter((child: any) => child.getData && child.getData('pauseText'))
+      .filter(
+        (child): child is GameObjectWithData =>
+          'getData' in child &&
+          typeof child.getData === 'function' &&
+          child.getData('pauseText'),
+      )
       .forEach((child) => child.destroy());
   }
 

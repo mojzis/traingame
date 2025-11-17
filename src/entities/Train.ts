@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { TrackPosition } from '../types';
 import { GAME_CONFIG } from '../config/game.config';
 import { Switch } from './Switch';
+import type { StopsMap } from '../types/layout';
 
 export class Train extends Phaser.GameObjects.Rectangle {
   private currentTrack: TrackPosition;
@@ -17,7 +18,7 @@ export class Train extends Phaser.GameObjects.Rectangle {
   private pausedVelocity: number = 0;
   private stopTimer?: Phaser.Time.TimerEvent;
   private hasVisitedStops: Set<string> = new Set();
-  private static generatedStops: any = null;
+  private static generatedStops: StopsMap | null = null;
 
   constructor(
     scene: Phaser.Scene,
@@ -125,7 +126,7 @@ export class Train extends Phaser.GameObjects.Rectangle {
       this.switchStartY + (this.switchTargetY - this.switchStartY) * t * t;
   }
 
-  static setGeneratedStops(stops: any): void {
+  static setGeneratedStops(stops: StopsMap): void {
     Train.generatedStops = stops;
   }
 
