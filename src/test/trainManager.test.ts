@@ -22,6 +22,7 @@ describe('TrainManager', () => {
       },
       time: {
         addEvent: vi.fn(),
+        delayedCall: vi.fn(),
       },
     };
 
