@@ -159,6 +159,16 @@ export class TrainManager {
       return null;
     }
 
+    // CRITICAL: Check if this track has at least one ULTRA EARLY switch (x < 150)
+    // This prevents unsolvable collisions even in very aggressive spawning scenarios
+    const ultraEarlySwitches = availableSwitches.filter((sw) => sw.x < 150);
+    if (ultraEarlySwitches.length === 0) {
+      console.warn(
+        `Track ${track} has no ultra early switches - unsafe for spawning`,
+      );
+      return null;
+    }
+
     // Find the rightmost (most recent) train on this track
     const trainsOnTrack = this.trains.filter(
       (train) => train.getCurrentTrack() === track,
@@ -218,9 +228,37 @@ export class TrainManager {
       );
 
       if (safeSpeedOptions.length > 0) {
-        const speed =
-          safeSpeedOptions[Math.floor(Math.random() * safeSpeedOptions.length)];
-        return { speed };
+        // CRITICAL: Verify the selected speed won't create unsolvable collision
+        // Filter out speeds that would catch up before reaching a switch
+        const guaranteedSafeSpeeds = safeSpeedOptions.filter((speed) => {
+          return this.isSpeedSafeForSpawn(
+            track,
+            speed,
+            rightmostTrain,
+            availableSwitches,
+          );
+        });
+
+        if (guaranteedSafeSpeeds.length > 0) {
+          const speed =
+            guaranteedSafeSpeeds[
+              Math.floor(Math.random() * guaranteedSafeSpeeds.length)
+            ];
+          return { speed };
+        } else {
+          // If no guaranteed safe speeds, use slowest speed only
+          const slowestSpeed = Math.min(...speedVariants);
+          if (
+            this.isSpeedSafeForSpawn(
+              track,
+              slowestSpeed,
+              rightmostTrain,
+              availableSwitches,
+            )
+          ) {
+            return { speed: slowestSpeed };
+          }
+        }
       }
     } else if (
       hasReachableSwitches &&
@@ -229,10 +267,69 @@ export class TrainManager {
       // Aggressive spawning: if switches are available and we're close to safe distance
       const speedVariants = GAME_CONFIG.physics.trainSpeedVariants;
       const conservativeSpeed = Math.min(...speedVariants); // Use slowest speed for aggressive spawns
-      return { speed: conservativeSpeed };
+
+      // CRITICAL: Still verify this won't create unsolvable collision
+      if (
+        this.isSpeedSafeForSpawn(
+          track,
+          conservativeSpeed,
+          rightmostTrain,
+          availableSwitches,
+        )
+      ) {
+        return { speed: conservativeSpeed };
+      }
     }
 
     return null; // Not safe to spawn on this track
+  }
+
+  /**
+   * CRITICAL: Check if spawning a train at given speed is safe
+   * A spawn is safe if the train can reach a switch before colliding with the lead train
+   */
+  private isSpeedSafeForSpawn(
+    track: TrackPosition,
+    newSpeed: number,
+    leadTrain: any,
+    switches: any[],
+  ): boolean {
+    const MIN_REACTION_TIME_MS = 2000; // Player needs at least 2 seconds to react
+
+    const leadSpeed = leadTrain.getSpeed();
+    const leadX = leadTrain.x;
+    const newTrainX = -100; // Spawn position
+
+    // If new train is slower or same speed, no collision will occur
+    if (newSpeed <= leadSpeed) {
+      return true;
+    }
+
+    // Calculate time until collision if both trains stay on same track
+    const relativeSpeed = newSpeed - leadSpeed;
+    const distance = leadX - newTrainX;
+    const timeToCollisionMs = (distance / relativeSpeed) * 1000;
+
+    // If collision time is very far in the future, it's safe (player has time)
+    if (timeToCollisionMs > MIN_REACTION_TIME_MS * 3) {
+      return true;
+    }
+
+    // Find the nearest switch the new train can reach
+    const reachableSwitches = switches.filter((sw) => {
+      const distanceToSwitch = sw.x - newTrainX;
+      const timeToReachSwitchMs = (distanceToSwitch / newSpeed) * 1000;
+
+      // Switch is reachable if we can get there before collision
+      // AND the player has time to react and click it
+      return (
+        timeToReachSwitchMs < timeToCollisionMs &&
+        timeToReachSwitchMs > 500 && // Need at least 500ms to react and click
+        timeToReachSwitchMs < timeToCollisionMs - MIN_REACTION_TIME_MS
+      );
+    });
+
+    return reachableSwitches.length > 0;
   }
 
   private getAvailableSwitchesForTrack(track: TrackPosition): any[] {
