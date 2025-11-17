@@ -6,6 +6,14 @@ vi.mock('phaser', () => ({
     Scene: class MockScene {},
     GameObjects: {
       Rectangle: class MockRectangle {
+        scene: any;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        fillColor: number;
+        body: any;
+
         constructor(
           scene: any,
           x: number,
@@ -20,33 +28,31 @@ vi.mock('phaser', () => ({
           this.width = width;
           this.height = height;
           this.fillColor = color;
+          this.body = null;
         }
-        setStrokeStyle = vi.fn();
-        setRotation = vi.fn();
-        setData = vi.fn();
+        setStrokeStyle = vi.fn().mockReturnThis();
+        setRotation = vi.fn().mockReturnThis();
+        setData = vi.fn().mockReturnThis();
         getData = vi.fn();
-        setAlpha = vi.fn();
+        setAlpha = vi.fn().mockReturnThis();
         destroy = vi.fn();
-        isOffScreen = vi.fn();
-        getCurrentTrack = vi.fn();
-        getSpeed = vi.fn();
-        setTrack = vi.fn();
-        update = vi.fn();
       },
       Container: class MockContainer {
+        x: number;
+        y: number;
+        scene: any;
+        scaleX: number = 1;
+        scaleY: number = 1;
+
         constructor(scene: any, x: number, y: number) {
           this.scene = scene;
           this.x = x;
           this.y = y;
         }
-        add = vi.fn();
-        setOrigin = vi.fn();
-        setInteractive = vi.fn();
-        on = vi.fn();
-        getState = vi.fn();
-        toggle = vi.fn();
-        setSwitchState = vi.fn();
-        getTargetTrack = vi.fn();
+        add = vi.fn().mockReturnThis();
+        setOrigin = vi.fn().mockReturnThis();
+        setInteractive = vi.fn().mockReturnThis();
+        on = vi.fn().mockReturnThis();
       },
     },
     Physics: {
