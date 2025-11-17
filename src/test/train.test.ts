@@ -11,16 +11,27 @@ describe('Train Entity', () => {
       },
       physics: {
         add: {
-          existing: vi.fn(),
+          existing: vi.fn((obj: any) => {
+            // Add a mock physics body to the object
+            obj.body = {
+              setVelocityX: vi.fn(),
+              velocity: { x: 0, y: 0 },
+            };
+            return obj;
+          }),
         },
       },
       time: {
-        delayedCall: vi.fn(),
+        delayedCall: vi.fn((delay: number, callback: () => void) => {
+          // Execute callback immediately for testing
+          callback();
+          return { paused: false };
+        }),
       },
     };
   });
 
-  it.skip('should create train with correct properties', () => {
+  it('should create train with correct properties', () => {
     const train = new Train(mockScene, 100, 'track1', 120);
 
     expect(train.x).toBe(100);
@@ -46,7 +57,7 @@ describe('Train Entity', () => {
     expect(veryFastTrain.fillColor).toBe(0x8e44ad); // trainVeryFast color
   });
 
-  it.skip('should detect when train is off screen', () => {
+  it('should detect when train is off screen', () => {
     const train = new Train(mockScene, 1300, 'track1', 100);
     expect(train.isOffScreen()).toBe(true);
 
@@ -54,7 +65,7 @@ describe('Train Entity', () => {
     expect(onScreenTrain.isOffScreen()).toBe(false);
   });
 
-  it.skip('should track current track position', () => {
+  it('should track current track position', () => {
     const train = new Train(mockScene, 0, 'track2', 100);
     expect(train.getCurrentTrack()).toBe('track2');
 

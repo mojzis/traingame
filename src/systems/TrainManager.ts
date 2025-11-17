@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Train } from '../entities/Train';
 import { TrackPosition } from '../types';
 import { GAME_CONFIG, getAvailableTracks } from '../config/game.config';
+import type { GeneratedLayout, SwitchConnection, Stop } from '../types/layout';
 
 export class TrainManager {
   private scene: Phaser.Scene;
@@ -11,7 +12,7 @@ export class TrainManager {
   private defaultSpeed: number = 100;
   private speedMultiplier: number = 1.0;
   private currentSpawnInterval: number = 2000;
-  private generatedLayout: any = null;
+  private generatedLayout: GeneratedLayout | null = null;
   private currentScore: number = 0;
 
   constructor(scene: Phaser.Scene) {
@@ -21,7 +22,7 @@ export class TrainManager {
     });
   }
 
-  setGeneratedLayout(layout: any): void {
+  setGeneratedLayout(layout: GeneratedLayout): void {
     this.generatedLayout = layout;
   }
 
@@ -291,8 +292,8 @@ export class TrainManager {
   private isSpeedSafeForSpawn(
     track: TrackPosition,
     newSpeed: number,
-    leadTrain: any,
-    switches: any[],
+    leadTrain: Train,
+    switches: SwitchConnection[],
   ): boolean {
     const MIN_REACTION_TIME_MS = 2000; // Player needs at least 2 seconds to react
 
@@ -332,11 +333,13 @@ export class TrainManager {
     return reachableSwitches.length > 0;
   }
 
-  private getAvailableSwitchesForTrack(track: TrackPosition): any[] {
+  private getAvailableSwitchesForTrack(
+    track: TrackPosition,
+  ): SwitchConnection[] {
     if (!this.generatedLayout) return [];
 
     return this.generatedLayout.connections.filter(
-      (connection: any) => connection.source === track,
+      (connection: SwitchConnection) => connection.source === track,
     );
   }
 
@@ -366,15 +369,15 @@ export class TrainManager {
   private getUpcomingStopsForTrack(
     track: TrackPosition,
     currentX: number,
-  ): any[] {
+  ): Stop[] {
     if (!this.generatedLayout) return [];
 
     return Object.values(this.generatedLayout.stops).filter(
-      (stop: any) => stop.track === track && stop.x > currentX,
+      (stop: Stop) => stop.track === track && stop.x > currentX,
     );
   }
 
-  private calculateMaxSafeSpeed(leadTrain: any): number {
+  private calculateMaxSafeSpeed(leadTrain: Train): number {
     // CRITICAL: Prevent fast trains spawning behind slow ones
     // This was causing unavoidable collisions just off-screen
     const leadTrainSpeed = leadTrain.getSpeed();
