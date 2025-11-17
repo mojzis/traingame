@@ -290,6 +290,25 @@ export function generateBalancedLayout(score: number = 0) {
               break;
             }
           }
+
+          // ULTIMATE GUARANTEE: Force switch even with potential conflicts
+          // This is critical to prevent tracks with no switches
+          if (!added) {
+            const x = 55 + Math.floor(Math.random() * 15); // Force at 55-70px
+            const id = `switch${switchId++}`;
+            switches[id] = x;
+            switchConnections.push({
+              id,
+              source: sourceTrack,
+              target: targetTrack,
+              x,
+            });
+            occupiedPositions.push({ x, track: sourceTrack });
+            trackSwitchCount[sourceTrack]++;
+            console.warn(
+              `Forced backward switch for ${sourceTrack} at ${x}px (all attempts failed)`,
+            );
+          }
         }
       } else if (Math.random() < 0.3) {
         // Random additional backward switch
@@ -389,8 +408,9 @@ export function generateBalancedLayout(score: number = 0) {
       const targetTrack =
         possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
 
+      let added = false;
       // Try ultra early positions (40-85) to find a valid spot
-      for (let attempt = 0; attempt < 30; attempt++) {
+      for (let attempt = 0; attempt < 30 && !added; attempt++) {
         const x = 40 + Math.random() * 45; // Ultra early zone: 40-85 (before collision point)
         if (isPositionAvailable(x, track)) {
           const id = `switch${switchId++}`;
@@ -404,8 +424,28 @@ export function generateBalancedLayout(score: number = 0) {
           occupiedPositions.push({ x: Math.round(x), track });
           trackSwitchCount[track]++;
           trackEarlySwitchCount[track]++;
-          break;
+          added = true;
         }
+      }
+
+      // ABSOLUTE GUARANTEE: If still not added after all attempts, force it
+      // This MUST succeed to prevent tracks with no switches
+      if (!added) {
+        const x = 50 + Math.floor(Math.random() * 20); // Force at 50-70px
+        const id = `switch${switchId++}`;
+        switches[id] = x;
+        switchConnections.push({
+          id,
+          source: track,
+          target: targetTrack,
+          x,
+        });
+        occupiedPositions.push({ x, track });
+        trackSwitchCount[track]++;
+        trackEarlySwitchCount[track]++;
+        console.warn(
+          `Forced switch for ${track} at ${x}px (no valid positions found)`,
+        );
       }
     }
   });
@@ -499,10 +539,11 @@ export function generateBalancedLayout(score: number = 0) {
 
       const zoneWidth = zoneRange.max - zoneRange.min;
       let x = Math.round(zoneRange.min + Math.random() * zoneWidth);
+      let added = false;
 
       // Check for bidirectional conflict and find alternative position if needed
       let attempts = 0;
-      while (attempts < 20) {
+      while (attempts < 30) {
         const hasBidirectionalConflict = switchConnections.some(
           (conn) =>
             Math.abs(conn.x - x) < 30 && // Within 30px (test uses 25px tolerance)
@@ -511,11 +552,20 @@ export function generateBalancedLayout(score: number = 0) {
         );
 
         if (!hasBidirectionalConflict) {
+          added = true;
           break;
         }
 
         x = Math.round(zoneRange.min + Math.random() * zoneWidth);
         attempts++;
+      }
+
+      // Force add even with conflict if necessary
+      if (!added) {
+        x = Math.round(zoneRange.min + zoneWidth / 2); // Middle of zone
+        console.warn(
+          `Forced zone switch at ${x}px (zone ${zoneRange.min}-${zoneRange.max})`,
+        );
       }
 
       const id = `switch${switchId++}`;

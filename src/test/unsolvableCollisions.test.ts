@@ -30,6 +30,35 @@ describe('Unsolvable Collision Detection', () => {
           const switches = layout.connections.filter(
             (conn: any) => conn.source === track,
           );
+
+          // Print detailed info on failure
+          if (switches.length === 0) {
+            console.error(`\n=== CRITICAL FAILURE ===`);
+            console.error(
+              `Iteration: ${iter}, Score: ${score}, Level: ${score >= 444 ? 2 : score >= 222 ? 1 : 0}`,
+            );
+            console.error(`Track with NO switches: ${track}`);
+            console.error(`Available tracks for this level:`, availableTracks);
+            console.error(
+              `Total switches in layout: ${layout.connections.length}`,
+            );
+            console.error(
+              `All switches:`,
+              layout.connections.map(
+                (c: any) => `${c.source}->${c.target} @${c.x}`,
+              ),
+            );
+
+            // Check which tracks DO have switches
+            const trackSwitchCounts: Record<string, number> = {};
+            availableTracks.forEach((t: string) => {
+              trackSwitchCounts[t] = layout.connections.filter(
+                (c: any) => c.source === t,
+              ).length;
+            });
+            console.error(`Switch count per track:`, trackSwitchCounts);
+          }
+
           expect(switches.length).toBeGreaterThan(
             0,
             `Iteration ${iter}, Score ${score}: Track ${track} has no switches - guaranteed unsolvable!`,
