@@ -10,18 +10,21 @@ import { TrainManager } from '../systems/TrainManager';
 import { CollisionManager } from '../systems/CollisionManager';
 import { TrackSystem } from '../systems/TrackSystem';
 import { Train } from '../entities/Train';
+import { StorageManager } from '../systems/StorageManager';
+import { GameStateManager, GameState } from '../systems/GameStateManager';
 import type { GameObjectWithData } from '../types/layout';
 
 export class MainScene extends Phaser.Scene {
   private trainManager!: TrainManager;
   private collisionManager!: CollisionManager;
   private trackSystem!: TrackSystem;
+  private gameStateManager!: GameStateManager;
   private scoreText!: Phaser.GameObjects.Text;
+  private highScoreText!: Phaser.GameObjects.Text;
   private speedText!: Phaser.GameObjects.Text;
   private levelText!: Phaser.GameObjects.Text;
   private score: number = 0;
-  private isGameOver: boolean = false;
-  private isPaused: boolean = false;
+  private highScore: number = 0;
   private currentSpeedLevel: number = 0;
   private currentGameLevel: number = 0; // Start at level 0 (beginner)
   private baseSpawnInterval: number = 1200; // Increased frequency from 2000ms to 1200ms
@@ -31,15 +34,21 @@ export class MainScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Load high score from storage
+    this.highScore = StorageManager.getHighScore();
+
+    // Initialize game state manager
+    this.gameStateManager = new GameStateManager(GameState.PLAYING);
+
     this.setupSystems();
     this.setupUI();
     this.startGame();
   }
 
   update(): void {
-    if (this.isGameOver) return;
+    if (this.gameStateManager.state === GameState.GAME_OVER) return;
 
-    if (!this.isPaused) {
+    if (this.gameStateManager.state === GameState.PLAYING) {
       this.trainManager.update();
       this.checkTrainSwitches();
       this.updateScore();
@@ -89,8 +98,20 @@ export class MainScene extends Phaser.Scene {
       fontFamily: 'Comic Sans MS, cursive',
     });
 
+    // High Score
+    this.highScoreText = this.add.text(
+      GAME_CONFIG.width - 150,
+      50,
+      `Best: ${this.highScore}`,
+      {
+        fontSize: '18px',
+        color: '#888',
+        fontFamily: 'Comic Sans MS, cursive',
+      },
+    );
+
     // Speed level indicator
-    this.speedText = this.add.text(GAME_CONFIG.width - 150, 50, 'Speed: 1.0x', {
+    this.speedText = this.add.text(GAME_CONFIG.width - 150, 80, 'Speed: 1.0x', {
       fontSize: '18px',
       color: '#666',
       fontFamily: 'Comic Sans MS, cursive',
@@ -99,7 +120,7 @@ export class MainScene extends Phaser.Scene {
     // Level indicator
     this.levelText = this.add.text(
       GAME_CONFIG.width - 150,
-      80,
+      110,
       'Level: 0 (Beginner)',
       {
         fontSize: '18px',
@@ -175,8 +196,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   private startGame(): void {
-    this.isGameOver = false;
-    this.isPaused = false;
+    // State already set to PLAYING in create(), no need to reset here
     this.score = 0;
     this.currentSpeedLevel = 0;
     this.currentGameLevel = getGameLevel(this.score);
@@ -322,15 +342,15 @@ export class MainScene extends Phaser.Scene {
   }
 
   private togglePause(): void {
-    if (this.isGameOver) return;
+    if (this.gameStateManager.state === GameState.GAME_OVER) return;
 
-    this.isPaused = !this.isPaused;
-
-    if (this.isPaused) {
+    if (this.gameStateManager.state === GameState.PLAYING) {
+      this.gameStateManager.pause();
       this.trainManager.pauseSpawning();
       this.trainManager.pauseAllTrains();
       this.showPauseOverlay();
-    } else {
+    } else if (this.gameStateManager.state === GameState.PAUSED) {
+      this.gameStateManager.resume();
       this.trainManager.resumeSpawning();
       this.trainManager.resumeAllTrains();
       this.hidePauseOverlay();
@@ -386,15 +406,26 @@ export class MainScene extends Phaser.Scene {
   }
 
   private handleGameOver(): void {
-    this.isGameOver = true;
-    this.isPaused = false;
+    this.gameStateManager.endGame();
     this.trainManager.stopSpawning();
     this.trainManager.stopAllTrains();
 
+    // Check and update high score
+    const isNewHighScore = StorageManager.updateHighScore(this.score);
+    if (isNewHighScore) {
+      this.highScore = this.score;
+      this.highScoreText.setText(`Best: ${this.highScore}`);
+    }
+
+    // Game over message
+    const gameOverMessage = isNewHighScore
+      ? 'NEW HIGH SCORE!\nCRASH!\nClick to restart'
+      : 'CRASH!\nClick to restart';
+
     const gameOverText = this.add.text(
       GAME_CONFIG.width / 2,
-      GAME_CONFIG.height / 2,
-      'CRASH!\nClick to restart',
+      GAME_CONFIG.height / 2 - 30,
+      gameOverMessage,
       {
         fontSize: '48px',
         color: '#e74c3c',
@@ -404,6 +435,20 @@ export class MainScene extends Phaser.Scene {
     );
     gameOverText.setOrigin(0.5);
     gameOverText.setInteractive({ cursor: 'pointer' });
+
+    // Display final score
+    const scoreDisplay = this.add.text(
+      GAME_CONFIG.width / 2,
+      GAME_CONFIG.height / 2 + 80,
+      `Score: ${this.score}${isNewHighScore ? '' : `\nBest: ${this.highScore}`}`,
+      {
+        fontSize: '24px',
+        color: '#333',
+        fontFamily: 'Comic Sans MS, cursive',
+        align: 'center',
+      },
+    );
+    scoreDisplay.setOrigin(0.5);
 
     gameOverText.on('pointerdown', () => {
       this.scene.restart();
