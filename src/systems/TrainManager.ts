@@ -375,16 +375,41 @@ export class TrainManager {
   }
 
   private calculateMaxSafeSpeed(leadTrain: any): number {
-    // Calculate maximum speed that would still allow time to react
-    const safetyBuffer = 1.5; // 50% safety margin
+    // CRITICAL: Prevent fast trains spawning behind slow ones
+    // This was causing unavoidable collisions just off-screen
     const leadTrainSpeed = leadTrain.getSpeed();
-    const maxSafeSpeed = leadTrainSpeed * safetyBuffer;
+    const leadTrainX = leadTrain.x;
 
-    // Don't exceed the fastest available speed
-    const maxAvailableSpeed = Math.max(
-      ...GAME_CONFIG.physics.trainSpeedVariants,
-    );
-    return Math.min(maxSafeSpeed, maxAvailableSpeed);
+    // If lead train is far enough ahead (more than 1.5 screens), allow any speed
+    if (leadTrainX > GAME_CONFIG.width * 1.5) {
+      return Math.max(...GAME_CONFIG.physics.trainSpeedVariants);
+    }
+
+    // For closer trains, calculate maximum safe speed based on catch-up time
+    // We want at least 10 seconds before a faster train would catch up
+    const MIN_CATCH_UP_TIME_MS = 10000;
+    const spawnX = -100;
+    const distance = leadTrainX - spawnX;
+
+    // For each possible speed, check if catch-up time is acceptable
+    const speedVariants = GAME_CONFIG.physics.trainSpeedVariants;
+    let maxSafeSpeed = leadTrainSpeed; // Default: same speed as lead (no catch-up)
+
+    for (const speed of speedVariants) {
+      if (speed <= leadTrainSpeed) {
+        maxSafeSpeed = Math.max(maxSafeSpeed, speed); // Same or slower is always safe
+      } else {
+        // Calculate time until catch-up
+        const relativeSpeed = speed - leadTrainSpeed;
+        const catchUpTimeMs = (distance / relativeSpeed) * 1000;
+
+        if (catchUpTimeMs >= MIN_CATCH_UP_TIME_MS) {
+          maxSafeSpeed = Math.max(maxSafeSpeed, speed);
+        }
+      }
+    }
+
+    return maxSafeSpeed;
   }
 
   update(): void {
