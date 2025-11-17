@@ -1,29 +1,46 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Switch } from '../entities/Switch';
 
-describe.skip('Switch Entity', () => {
+describe('Switch Entity', () => {
   let mockScene: any;
+  let mockGraphics: any;
+  let mockRectangle: any;
 
   beforeEach(() => {
+    // Create mock graphics with method chaining (all methods return graphics object)
+    mockGraphics = {
+      clear: vi.fn().mockReturnThis(),
+      lineStyle: vi.fn().mockReturnThis(),
+      fillStyle: vi.fn().mockReturnThis(),
+      beginPath: vi.fn().mockReturnThis(),
+      moveTo: vi.fn().mockReturnThis(),
+      lineTo: vi.fn().mockReturnThis(),
+      closePath: vi.fn().mockReturnThis(),
+      fillPath: vi.fn().mockReturnThis(),
+      strokePath: vi.fn().mockReturnThis(),
+    };
+
+    // Create mock rectangle with event handling
+    const eventHandlers: Record<string, (...args: any[]) => void> = {};
+    mockRectangle = {
+      setInteractive: vi.fn().mockReturnValue(mockRectangle),
+      on: vi.fn((event: string, handler: (...args: any[]) => void) => {
+        eventHandlers[event] = handler;
+        return mockRectangle;
+      }),
+      emit: vi.fn((event: string, ...args: any[]) => {
+        if (eventHandlers[event]) {
+          eventHandlers[event](...args);
+        }
+        return mockRectangle;
+      }),
+    };
+
     mockScene = {
       add: {
-        graphics: vi.fn().mockReturnValue({
-          clear: vi.fn(),
-          lineStyle: vi.fn(),
-          fillStyle: vi.fn(),
-          beginPath: vi.fn(),
-          moveTo: vi.fn(),
-          lineTo: vi.fn(),
-          closePath: vi.fn(),
-          fillPath: vi.fn(),
-          strokePath: vi.fn(),
-        }),
-        rectangle: vi.fn().mockReturnValue({
-          setInteractive: vi.fn().mockReturnValue({
-            on: vi.fn(),
-          }),
-        }),
-        existing: vi.fn(),
+        graphics: vi.fn(() => mockGraphics),
+        rectangle: vi.fn(() => mockRectangle),
+        existing: vi.fn((obj) => obj),
       },
       tweens: {
         add: vi.fn(),

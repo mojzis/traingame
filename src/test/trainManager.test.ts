@@ -7,6 +7,9 @@ describe('TrainManager', () => {
 
   beforeEach(() => {
     mockScene = {
+      add: {
+        existing: vi.fn().mockReturnThis(),
+      },
       physics: {
         add: {
           group: vi.fn().mockReturnValue({
@@ -14,10 +17,12 @@ describe('TrainManager', () => {
             remove: vi.fn(),
             clear: vi.fn(),
           }),
+          existing: vi.fn().mockReturnThis(),
         },
       },
       time: {
         addEvent: vi.fn(),
+        delayedCall: vi.fn(),
       },
     };
 
@@ -41,7 +46,7 @@ describe('TrainManager', () => {
     expect(trainManager.generatedLayout).toBe(mockLayout);
   });
 
-  it.skip('should start spawning with timer', () => {
+  it('should start spawning with timer', () => {
     trainManager.startSpawning(2000, 100);
 
     expect(mockScene.time.addEvent).toHaveBeenCalledWith({

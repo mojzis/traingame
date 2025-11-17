@@ -49,9 +49,10 @@ export const GAME_CONFIG = {
 } as const;
 
 import { TrackPosition } from '../types';
+import type { GeneratedLayout } from '../types/layout';
 
 // Layout generator for balanced switch and stop placement
-export function generateBalancedLayout(score: number = 0) {
+export function generateBalancedLayout(score: number = 0): GeneratedLayout {
   const availableTrackNames = getAvailableTracks(score);
   const trackNames = availableTrackNames as TrackPosition[];
   const gameWidth = GAME_CONFIG.width;
@@ -83,8 +84,8 @@ export function generateBalancedLayout(score: number = 0) {
   const switches: Record<string, number> = {};
   const switchConnections: Array<{
     id: string;
-    source: string;
-    target: string;
+    source: TrackPosition;
+    target: TrackPosition;
     x: number;
   }> = [];
   let switchId = 1;
@@ -291,22 +292,75 @@ export function generateBalancedLayout(score: number = 0) {
             }
           }
 
-          // ULTIMATE GUARANTEE: Force switch even with potential conflicts
+          // ULTIMATE GUARANTEE: Force switch while avoiding bidirectional conflicts
           // This is critical to prevent tracks with no switches
           if (!added) {
-            const x = 55 + Math.floor(Math.random() * 15); // Force at 55-70px
+            let finalX: number | null = null;
+
+            // Try systematically across the ultra-early zone
+            for (let pos = 40; pos <= 85; pos += 3) {
+              const hasBidirectionalConflict = switchConnections.some(
+                (conn) =>
+                  Math.abs(conn.x - pos) < 30 && // Within 30px (test uses 25px tolerance)
+                  conn.source === targetTrack &&
+                  conn.target === sourceTrack,
+              );
+              if (!hasBidirectionalConflict) {
+                finalX = pos;
+                break;
+              }
+            }
+
+            // If still no position found, try wider spacing requirement (40px)
+            if (finalX === null) {
+              for (let pos = 40; pos <= 85; pos += 3) {
+                const hasBidirectionalConflict = switchConnections.some(
+                  (conn) =>
+                    Math.abs(conn.x - pos) < 40 && // Wider spacing
+                    conn.source === targetTrack &&
+                    conn.target === sourceTrack,
+                );
+                if (!hasBidirectionalConflict) {
+                  finalX = pos;
+                  break;
+                }
+              }
+            }
+
+            // Last resort: use a fallback position that's offset from existing switches
+            if (finalX === null) {
+              // Find average position of existing opposite-direction switches
+              const oppositeConnections = switchConnections.filter(
+                (conn) =>
+                  conn.source === targetTrack && conn.target === sourceTrack,
+              );
+              if (oppositeConnections.length > 0) {
+                const avgX =
+                  oppositeConnections.reduce((sum, conn) => sum + conn.x, 0) /
+                  oppositeConnections.length;
+                // Offset by at least 35px
+                finalX = avgX + 35 > 85 ? avgX - 35 : avgX + 35;
+                finalX = Math.max(40, Math.min(85, finalX));
+              } else {
+                finalX = 55; // Default fallback
+              }
+            }
+
             const id = `switch${switchId++}`;
-            switches[id] = x;
+            switches[id] = Math.round(finalX);
             switchConnections.push({
               id,
               source: sourceTrack,
               target: targetTrack,
-              x,
+              x: Math.round(finalX),
             });
-            occupiedPositions.push({ x, track: sourceTrack });
+            occupiedPositions.push({
+              x: Math.round(finalX),
+              track: sourceTrack,
+            });
             trackSwitchCount[sourceTrack]++;
             console.warn(
-              `Forced backward switch for ${sourceTrack} at ${x}px (all attempts failed)`,
+              `Forced backward switch for ${sourceTrack} at ${Math.round(finalX)}px (all attempts failed)`,
             );
           }
         }
@@ -451,8 +505,10 @@ export function generateBalancedLayout(score: number = 0) {
   });
 
   // Generate stops - ensure each has at least one switch before it with adequate spacing
-  const stops: Record<string, { x: number; track: string; duration: number }> =
-    {};
+  const stops: Record<
+    string,
+    { x: number; track: TrackPosition; duration: number }
+  > = {};
   const stopPositions = [
     gameWidth * 0.4, // 40% across
     gameWidth * 0.6, // 60% across

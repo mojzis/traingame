@@ -6,11 +6,17 @@ import {
   getAvailableTracks,
 } from '../config/game.config';
 import { TrackPosition } from '../types';
+import type {
+  GeneratedLayout,
+  SwitchConnection,
+  Stop,
+  StopsMap,
+} from '../types/layout';
 
 export class TrackSystem {
   private scene: Phaser.Scene;
   private switches: Switch[] = [];
-  private generatedLayout: any;
+  private generatedLayout: GeneratedLayout;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -70,7 +76,7 @@ export class TrackSystem {
 
   private drawSwitchConnections(graphics: Phaser.GameObjects.Graphics): void {
     // Draw curved connections based on generated layout
-    this.generatedLayout.connections.forEach((connection: any) => {
+    this.generatedLayout.connections.forEach((connection: SwitchConnection) => {
       this.drawTrackConnection(
         graphics,
         connection.x,
@@ -114,7 +120,7 @@ export class TrackSystem {
     const tracks = GAME_CONFIG.physics.tracks;
 
     // Create switches based on generated layout
-    this.generatedLayout.connections.forEach((connection: any) => {
+    this.generatedLayout.connections.forEach((connection: SwitchConnection) => {
       const sourceTrack = connection.source as TrackPosition;
       const destinationTrack = connection.target as TrackPosition;
       const sourceY = tracks[sourceTrack as keyof typeof tracks];
@@ -160,7 +166,7 @@ export class TrackSystem {
 
   private drawStops(graphics: Phaser.GameObjects.Graphics): void {
     // Draw stops based on generated layout
-    Object.values(this.generatedLayout.stops).forEach((stop: any) => {
+    Object.values(this.generatedLayout.stops).forEach((stop: Stop) => {
       const y =
         GAME_CONFIG.physics.tracks[
           stop.track as keyof typeof GAME_CONFIG.physics.tracks
@@ -180,11 +186,11 @@ export class TrackSystem {
     return this.switches;
   }
 
-  getGeneratedStops(): any {
+  getGeneratedStops(): StopsMap {
     return this.generatedLayout.stops;
   }
 
-  getGeneratedLayout(): any {
+  getGeneratedLayout(): GeneratedLayout {
     return this.generatedLayout;
   }
 }

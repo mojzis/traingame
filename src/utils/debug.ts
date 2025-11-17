@@ -1,3 +1,5 @@
+import { Train } from '../entities/Train';
+
 export class DebugUtils {
   static drawCollisionBoxes(scene: Phaser.Scene, enabled: boolean): void {
     if (enabled && scene.physics.world) {
@@ -5,7 +7,7 @@ export class DebugUtils {
     }
   }
 
-  static logTrainCount(trains: any[]): void {
+  static logTrainCount(trains: Train[]): void {
     console.log(`Active trains: ${trains.length}`);
   }
 
